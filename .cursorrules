@@ -1,0 +1,25 @@
+Project: Zasterix – AI-Driven Wealth Engineering for Yuh
+
+Architecture Pattern: Feature-Driven Modular Engine
+- /src/core: Global state (Zustand), Supabase client, Auth.
+- /src/shared/tools: Reusable stateless utilities/components (e.g., YuhConnector).
+- /src/shared/components: Atomic UI elements (Buttons, Cards, Layouts).
+- /src/features/[stage-id]: Stage-based folders containing Modules.
+
+Data-Driven Module Rule:
+- Every module must be a shell that renders tasks from tasks.config.ts.
+- No hard-coded steps in UI. Task types: 'info' | 'input' | 'ai-coach' | 'tool-action'.
+
+AI-Context Integration:
+- Every major component must start with a standardized JSDoc header:
+  /**
+   * @MODULE_ID <string>
+   * @STAGE <string>
+   * @DATA_INPUTS <string[]>
+   * @REQUIRED_TOOLS <string[]>
+   */
+
+Design System:
+- Swiss FinTech minimal aesthetic.
+- Colors: Slate-900 (primary), Emerald-500 (success), Yuh-inspired Pink/Red (actions).
+- Global layout elements: Task-Progress-Bar, Toolbox-Sidebar.

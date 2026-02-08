@@ -32,7 +32,13 @@ const resolveUserName = (profile: ProfileRow | null, fallback?: string | null) =
   fallback?.trim() ||
   "User";
 
-export const ensureUserOrganization = async (): Promise<EnsureTenantResult> => {
+type EnsureUserOrganizationOptions = {
+  organizationName?: string;
+};
+
+export const ensureUserOrganization = async (
+  options?: EnsureUserOrganizationOptions,
+): Promise<EnsureTenantResult> => {
   if (!isSupabaseConfigured) {
     return {
       organization: null,
@@ -87,8 +93,8 @@ export const ensureUserOrganization = async (): Promise<EnsureTenantResult> => {
     };
   }
 
-  const orgName = `${userName}'s Lab`;
-  const orgSlug = `${slugify(userName)}-lab-${user.id.slice(0, 6)}`;
+  const orgName = options?.organizationName ?? `${userName}'s Lab`;
+  const orgSlug = `${slugify(orgName)}-${user.id.slice(0, 6)}`;
 
   const { data: organization, error: orgError } = await supabase
     .from("organizations")

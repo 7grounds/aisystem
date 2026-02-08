@@ -1,0 +1,315 @@
+/**
+ * @MODULE_ID app.dashboard
+ * @STAGE global
+ * @DATA_INPUTS ["fetchUserProgress", "resetAllProgress", "assetCoachTasks", "assetIdentificationTasks", "feeMonsterTasks"]
+ * @REQUIRED_TOOLS ["YuhConnector", "getButtonClasses", "fetchUserProgress", "resetAllProgress", "supabase"]
+ */
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { getButtonClasses } from "@/shared/components/Button";
+import { YuhConnector } from "@/shared/tools/YuhConnector";
+import { fetchUserProgress, resetAllProgress } from "@/core/progress";
+import { supabase, isSupabaseConfigured } from "@/core/supabase";
+import { assetCoachTasks } from "@/features/stage-1/asset-coach/tasks.config";
+import { assetIdentificationTasks } from "@/features/stage-1/asset-identification/tasks.config";
+import { feeMonsterTasks } from "@/features/stage-2/fee-monster/tasks.config";
+
+const DashboardPage = () => {
+  const defaultStage = "stage-1";
+  const defaultModule = "asset-coach";
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastSync, setLastSync] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{
+    stageId: string | null;
+    moduleId: string | null;
+    completedTasks: string[];
+  } | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchProgress = async () => {
+      if (!isSupabaseConfigured) {
+        if (!isMounted) return;
+        setIsLoading(false);
+        setLastSync(new Date().toISOString());
+        return;
+      }
+
+      const { data, error } = await supabase.auth.getUser();
+      if (!isMounted) return;
+
+      if (error || !data.user) {
+        setProgress(null);
+        setIsLoading(false);
+        setLastSync(new Date().toISOString());
+        return;
+      }
+
+      const latest = await fetchUserProgress(data.user.id);
+      if (!isMounted) return;
+
+      setProgress(
+        latest
+          ? {
+              stageId: latest.stageId,
+              moduleId: latest.moduleId,
+              completedTasks: latest.completedTasks ?? [],
+            }
+          : null,
+      );
+      setIsLoading(false);
+      setLastSync(latest?.updatedAt ?? new Date().toISOString());
+    };
+
+    fetchProgress();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const stageId = progress?.stageId ?? defaultStage;
+  const moduleId = progress?.moduleId ?? defaultModule;
+  const moduleKey = `${stageId}/${moduleId}`;
+  const defaultKey = `${defaultStage}/${defaultModule}`;
+
+  const taskRegistry: Record<string, { id: string }[]> = {
+    "stage-1/asset-coach": assetCoachTasks,
+    "stage-1/asset-identification": assetIdentificationTasks,
+    "stage-2/fee-monster": feeMonsterTasks,
+  };
+
+  const moduleMeta: Record<
+    string,
+    { title: string; description: string; accent: string }
+  > = {
+    "stage-1/asset-coach": {
+      title: "Stage 1: Asset-Coach",
+      description:
+        "AI-powered asset diagnostics built for Swiss wealth engineering. Stress-test assets before they enter the Yuh portfolio workflow.",
+      accent: "Active Module",
+    },
+    "stage-1/asset-identification": {
+      title: "Stage 1: Asset Identification",
+      description:
+        "Map the full asset inventory to provide the AI coach with a precise wealth baseline.",
+      accent: "Active Module",
+    },
+    "stage-2/fee-monster": {
+      title: "Stage 2: The Fee-Monster",
+      description:
+        "Expose fee drag, compare alternatives, and engineer order sizing that protects compounding.",
+      accent: "Active Module",
+    },
+  };
+
+  const activeTasks = taskRegistry[moduleKey] ?? taskRegistry[defaultKey];
+  const totalTasks = activeTasks?.length ?? 0;
+  const completedCount = Math.min(
+    progress?.completedTasks.length ?? 0,
+    totalTasks,
+  );
+  const progressPercent = useMemo(() => {
+    if (!totalTasks) return 0;
+    return (completedCount / totalTasks) * 100;
+  }, [completedCount, totalTasks]);
+
+  const hasProgress = Boolean(progress?.stageId && progress?.moduleId);
+  const isModuleCompleted = hasProgress && completedCount >= totalTasks;
+
+  const activeMeta = moduleMeta[moduleKey] ?? moduleMeta[defaultKey];
+  const stageNumber = stageId.replace("stage-", "");
+  const primaryLabel = hasProgress
+    ? `Continue Stage ${stageNumber}`
+    : "Start Stage 1";
+
+  const buildModuleRoute = (stage: string, module: string) => {
+    const normalizedStage = stage.startsWith("stage-")
+      ? stage
+      : `stage-${stage}`;
+    return `/${normalizedStage}/${module}`;
+  };
+
+  const primaryHref = hasProgress
+    ? buildModuleRoute(stageId, moduleId)
+    : buildModuleRoute(defaultStage, defaultModule);
+
+  const showNextModule =
+    stageId === "stage-1" && isModuleCompleted && moduleId !== "fee-monster";
+  const nextModuleHref = "/stage-2/fee-monster";
+
+  const showDevReset = process.env.NODE_ENV === "development";
+
+  const lastSyncLabel = lastSync
+    ? new Date(lastSync).toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "--:--";
+
+  const handleDevReset = async () => {
+    if (!isSupabaseConfigured) {
+      window.location.reload();
+      return;
+    }
+
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      window.location.reload();
+      return;
+    }
+
+    await resetAllProgress(data.user.id);
+    window.location.reload();
+  };
+
+  const toolTiles = [
+    {
+      id: "asset-check",
+      label: "Asset-Check",
+      href: "/stage-1/asset-coach",
+      external: false,
+    },
+    {
+      id: "fee-calculator",
+      label: "Fee-Calculator",
+      href: "/stage-2/fee-monster",
+      external: false,
+    },
+    {
+      id: "yuh-link",
+      label: "Yuh-Link",
+      href: "yuh://connect",
+      external: true,
+    },
+  ];
+
+  return (
+    <div className="space-y-10">
+      <section className="rounded-3xl bg-slate-950 px-8 py-10 text-slate-100 shadow-[0_25px_60px_rgba(15,23,42,0.4)]">
+        <div className="space-y-4">
+          <p className="text-xs uppercase tracking-[0.3em] text-emerald-400">
+            {activeMeta.accent}
+          </p>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-3xl font-semibold">{activeMeta.title}</h2>
+              {isModuleCompleted ? (
+                <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+                  ✓ Completed
+                </span>
+              ) : null}
+            </div>
+            <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
+              {activeMeta.description}
+            </p>
+            {showNextModule ? (
+              <Link
+                className="text-xs uppercase tracking-[0.24em] text-emerald-300 hover:text-emerald-200"
+                href={nextModuleHref}
+              >
+                Next Module: Stage 2 / Fee-Monster
+              </Link>
+            ) : null}
+          </div>
+          <div className="pt-2">
+            <Link
+              className={getButtonClasses("action", "md")}
+              href={primaryHref}
+            >
+              {primaryLabel}
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-white/10 bg-white/10 px-8 py-8 text-slate-100 shadow-[0_20px_50px_rgba(15,23,42,0.35)] backdrop-blur-xl">
+        <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-slate-300">
+          <span>Progress Overview</span>
+          <span>{stageId}</span>
+        </div>
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between text-sm text-slate-100">
+            <span className="font-medium text-emerald-400">
+              {isLoading ? "Syncing..." : `Progress: ${progressPercent}%`}
+            </span>
+            <span className="text-xs uppercase tracking-[0.2em] text-slate-300">
+              {completedCount} / {totalTasks} Tasks
+            </span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-slate-800/80">
+            <div
+              className="h-2 rounded-full bg-emerald-500 transition-all"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+        <div className="mt-6 text-xs uppercase tracking-[0.24em] text-slate-400">
+          Last Sync: {lastSyncLabel}
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-800/70 bg-slate-950 px-8 py-8 text-slate-100 shadow-[0_20px_55px_rgba(15,23,42,0.4)]">
+        <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-slate-400">
+          <span>Available Tools</span>
+          <span>Quick Access</span>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          {toolTiles.map((tool) =>
+            tool.external ? (
+              <a
+                key={tool.id}
+                className="flex items-center justify-center rounded-2xl border border-slate-800/80 bg-slate-900/60 px-4 py-4 text-xs uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/60 hover:text-emerald-200"
+                href={tool.href}
+              >
+                {tool.label}
+              </a>
+            ) : (
+              <Link
+                key={tool.id}
+                className="flex items-center justify-center rounded-2xl border border-slate-800/80 bg-slate-900/60 px-4 py-4 text-xs uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/60 hover:text-emerald-200"
+                href={tool.href}
+              >
+                {tool.label}
+              </Link>
+            ),
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-800/70 bg-slate-950 px-8 py-8 text-slate-100 shadow-[0_20px_55px_rgba(15,23,42,0.4)]">
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
+            Toolbox Quick Access
+          </p>
+          <h3 className="text-xl font-semibold text-slate-100">
+            Yuh Connector
+          </h3>
+          <p className="text-sm text-slate-400">
+            Launch Yuh directly from the dashboard to sync portfolios on demand.
+          </p>
+        </div>
+        <div className="mt-6">
+          <YuhConnector action="connect" label="Open Yuh" />
+        </div>
+      </section>
+
+      {showDevReset ? (
+        <div className="pt-2 text-xs text-slate-500">
+          <button
+            className="text-slate-500 hover:text-slate-300"
+            type="button"
+            onClick={handleDevReset}
+          >
+            Dev-Reset
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+export default DashboardPage;

@@ -220,6 +220,24 @@ const FactoryPage = () => {
           ],
         });
 
+      const { data: resourceSeeded, created: resourceCreated } =
+        await registerNewAgent({
+          name: "Resource-Controller",
+          description:
+            "Wächter über Systemressourcen und Modell-Auslastung.",
+          systemPrompt:
+            "Du bist der Wächter über die Systemressourcen. Dein Ziel ist die 100%ige Verfügbarkeit der Zasterix-Fabrik. Optimiere den Modell-Einsatz nach Kosten und Geschwindigkeit. Melde Engpässe sofort an den Executive Orchestrator.",
+          category: "Management",
+          icon: "📊",
+          searchKeywords: [
+            "ressourcen",
+            "verfügbarkeit",
+            "latency",
+            "kosten",
+            "modelle",
+          ],
+        });
+
       if (!isMounted) return;
       if (created && seeded) {
         const newTemplate = instantiateTemplates([seeded])[0];
@@ -279,6 +297,13 @@ const FactoryPage = () => {
 
       if (devopsCreated && devopsSeeded) {
         const newTemplate = instantiateTemplates([devopsSeeded])[0];
+        if (newTemplate) {
+          setTemplates((prev) => [newTemplate, ...prev]);
+        }
+      }
+
+      if (resourceCreated && resourceSeeded) {
+        const newTemplate = instantiateTemplates([resourceSeeded])[0];
         if (newTemplate) {
           setTemplates((prev) => [newTemplate, ...prev]);
         }

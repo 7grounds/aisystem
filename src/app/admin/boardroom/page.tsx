@@ -24,6 +24,7 @@ const BOARD_AGENTS = [
   { key: "guardian", name: "Vault-Guardian" },
   { key: "coordinator", name: "Koordinator" },
   { key: "manager", name: "Master-Manager" },
+  { key: "resource", name: "Resource-Controller" },
 ];
 
 const BoardroomPage = () => {
@@ -31,6 +32,12 @@ const BoardroomPage = () => {
   const [agents, setAgents] = useState<AgentTemplateRow[]>([]);
   const [logs, setLogs] = useState<ManagementLogRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const primaryProvider =
+    process.env.NEXT_PUBLIC_AI_PRIMARY_PROVIDER ?? "unconfigured";
+  const backupProviders = (process.env.NEXT_PUBLIC_AI_BACKUP_PROVIDERS ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 
   useEffect(() => {
     let isMounted = true;
@@ -118,6 +125,15 @@ const BoardroomPage = () => {
         <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-slate-400">
           <span>Management Board</span>
           <span>Boardroom</span>
+        </div>
+        <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-900/60 px-4 py-3 text-xs uppercase tracking-[0.2em] text-slate-400">
+          <span className="text-emerald-300">Brain-Provider:</span>{" "}
+          {primaryProvider}
+          {backupProviders.length ? (
+            <span className="ml-2 text-slate-500">
+              (Backups: {backupProviders.join(", ")})
+            </span>
+          ) : null}
         </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {BOARD_AGENTS.map((agent) => {

@@ -72,6 +72,33 @@ export interface Database {
         };
         Relationships: [];
       };
+      search_logs: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          organization_id: string | null;
+          query: string;
+          results_found: boolean;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          organization_id?: string | null;
+          query: string;
+          results_found?: boolean;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          organization_id?: string | null;
+          query?: string;
+          results_found?: boolean;
+          created_at?: string | null;
+        };
+        Relationships: [];
+      };
       organizations: {
         Row: {
           id: string;

@@ -14,6 +14,7 @@ import {
 } from "@/core/agent-factory";
 import { MAIN_AGENT_SYSTEM_PROMPT } from "@/core/agent-prompts";
 import { useTenant } from "@/core/tenant-context";
+import { supabase } from "@/core/supabase";
 
 type AgentShowcase = {
   id: string;
@@ -87,6 +88,7 @@ const ShowcasePage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState("Alle");
   const [activeProblem, setActiveProblem] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -107,6 +109,22 @@ const ShowcasePage = () => {
       isMounted = false;
     };
   }, [organization?.id]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const resolveUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!isMounted) return;
+      setUserId(data.user?.id ?? null);
+    };
+
+    resolveUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const templateIndex = useMemo(() => {
     return templates.reduce<Record<string, AgentTemplate[]>>((acc, template) => {
@@ -230,6 +248,30 @@ const ShowcasePage = () => {
       return fuzzyMatch(normalizedSearch, haystack);
     });
   }, [activeCategory, galleryAgents, searchTerm]);
+
+  useEffect(() => {
+    let timeoutId: number | null = null;
+
+    const query = searchTerm.trim();
+    if (!query) {
+      return () => {
+        if (timeoutId) window.clearTimeout(timeoutId);
+      };
+    }
+
+    timeoutId = window.setTimeout(() => {
+      supabase.from("search_logs").insert({
+        user_id: userId,
+        organization_id: organization?.id ?? null,
+        query,
+        results_found: filteredAgents.length > 0,
+      });
+    }, 350);
+
+    return () => {
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, [filteredAgents.length, organization?.id, searchTerm, userId]);
 
   useEffect(() => {
     if (!showArchitectChat) {

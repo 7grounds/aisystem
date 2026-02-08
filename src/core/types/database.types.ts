@@ -42,6 +42,7 @@ export interface Database {
           name: string;
           description: string;
           system_prompt: string;
+          organization_id: string | null;
           created_at: string | null;
         };
         Insert: {
@@ -49,6 +50,7 @@ export interface Database {
           name: string;
           description: string;
           system_prompt: string;
+          organization_id?: string | null;
           created_at?: string | null;
         };
         Update: {
@@ -56,6 +58,7 @@ export interface Database {
           name?: string;
           description?: string;
           system_prompt?: string;
+          organization_id?: string | null;
           created_at?: string | null;
         };
         Relationships: [];

@@ -26,6 +26,7 @@ export type AgentTemplate = {
   name: string;
   description: string;
   systemPrompt: string;
+  organizationId: string | null;
   createdAt: string | null;
 };
 
@@ -41,11 +42,21 @@ export const fetchAgentDefinitions = async () => {
   };
 };
 
-export const fetchAgentTemplates = async () => {
-  const { data, error } = await supabase
+export const fetchAgentTemplates = async (
+  organizationId?: string | null,
+) => {
+  let query = supabase
     .from("agent_templates")
-    .select("id, name, description, system_prompt, created_at")
+    .select("id, name, description, system_prompt, organization_id, created_at")
     .order("created_at", { ascending: false });
+
+  if (organizationId) {
+    query = query.or(
+      `organization_id.eq.${organizationId},organization_id.is.null`,
+    );
+  }
+
+  const { data, error } = await query;
 
   return {
     data: (data ?? []) as AgentTemplateRow[],
@@ -110,11 +121,13 @@ export const createSpecialistAgent = async ({
   name,
   description,
   systemPrompt,
+  organizationId,
 }: {
   task: string;
   name?: string;
   description?: string;
   systemPrompt?: string;
+  organizationId?: string | null;
 }) => {
   const trimmedTask = task.trim();
   const agentName = name?.trim() || trimmedTask || "Specialist Agent";
@@ -128,8 +141,9 @@ export const createSpecialistAgent = async ({
       name: agentName,
       description: agentDescription,
       system_prompt: prompt,
+      organization_id: organizationId ?? null,
     })
-    .select("id, name, description, system_prompt, created_at")
+    .select("id, name, description, system_prompt, organization_id, created_at")
     .single();
 
   return {
@@ -156,6 +170,7 @@ export const instantiateTemplates = (
     name: row.name,
     description: row.description,
     systemPrompt: row.system_prompt,
+    organizationId: row.organization_id ?? null,
     createdAt: row.created_at,
   }));
 };

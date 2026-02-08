@@ -13,6 +13,7 @@ import {
   instantiateTemplates,
   type AgentTemplate,
 } from "@/core/agent-factory";
+import { useTenant } from "@/core/tenant-context";
 
 type ChatMessage = {
   role: "system" | "user";
@@ -29,13 +30,14 @@ const FactoryPage = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const { organization } = useTenant();
 
   useEffect(() => {
     let isMounted = true;
 
     const loadTemplates = async () => {
       setIsLoading(true);
-      const { data, error } = await fetchAgentTemplates();
+      const { data, error } = await fetchAgentTemplates(organization?.id);
       if (!isMounted) return;
       if (error) {
         setTemplates([]);
@@ -51,7 +53,7 @@ const FactoryPage = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [organization?.id]);
 
   useEffect(() => {
     if (!selectedTemplate) {
@@ -75,7 +77,10 @@ const FactoryPage = () => {
     setCreateError(null);
     setIsCreating(true);
 
-    const { data, error } = await createSpecialistAgent({ task: taskInput });
+    const { data, error } = await createSpecialistAgent({
+      task: taskInput,
+      organizationId: organization?.id ?? null,
+    });
     if (error || !data) {
       setCreateError(error?.message ?? "Template konnte nicht erstellt werden.");
       setIsCreating(false);

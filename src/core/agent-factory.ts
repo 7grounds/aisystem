@@ -18,6 +18,13 @@ export type AgentInstance = {
   status: string | null;
 };
 
+export type SpecialistConsultation = {
+  agentId: string;
+  agentName: string;
+  response: string;
+  timestamp: string;
+};
+
 type AgentTemplateRow =
   Database["public"]["Tables"]["agent_templates"]["Row"];
 
@@ -280,4 +287,66 @@ export const registerNewAgent = async ({
   });
 
   return { data: data as AgentTemplateRow | null, created: true, error };
+};
+
+export const consultSpecialistAgent = async (
+  agentId: string,
+  context: string,
+) => {
+  const { data, error } = await supabase
+    .from("agent_templates")
+    .select("id, name, system_prompt")
+    .eq("id", agentId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return {
+      data: null,
+      error: error ?? new Error("Agent not found"),
+    };
+  }
+
+  const response = [
+    `Agent ${data.name} consulted.`,
+    `Context received: ${context}`,
+    "Response: Provide targeted guidance based on the specialist prompt.",
+  ].join("\n");
+
+  return {
+    data: {
+      agentId: data.id,
+      agentName: data.name,
+      response,
+      timestamp: new Date().toISOString(),
+    } as SpecialistConsultation,
+    error: null,
+  };
+};
+
+type ConversationEntry = {
+  role: "system" | "user" | "assistant";
+  content: string;
+};
+
+export const consolidateConversation = async ({
+  userId,
+  organizationId,
+  payload,
+  summary,
+}: {
+  userId: string;
+  organizationId: string | null;
+  payload: ConversationEntry[];
+  summary: string[];
+}) => {
+  return supabase.from("universal_history").insert({
+    user_id: userId,
+    organization_id: organizationId,
+    payload,
+    summary_payload: {
+      key_takeaways: summary,
+      generated_at: new Date().toISOString(),
+    },
+    created_at: new Date().toISOString(),
+  });
 };

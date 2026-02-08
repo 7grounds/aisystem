@@ -148,6 +148,24 @@ const FactoryPage = () => {
         ],
       });
 
+      const { data: coordinatorSeeded, created: coordinatorCreated } =
+        await registerNewAgent({
+          name: "Koordinator",
+          description:
+            "Zentraler Orchestrator zur Bündelung von Spezial-Agenten.",
+          systemPrompt:
+            "Du bist der Zentrale Koordinator. Deine Aufgabe ist es, Nutzeranfragen zu analysieren, Ziele zu definieren und Spezial-Agenten aus der Fabrik zu delegieren. Fokus: Sei extrem effizient. Extrahiere nur Fakten. Konsolidiere Informationen aus verschiedenen Quellen. Management-Logic: Du hast die Erlaubnis, andere registrierte Agenten ('Legal-Guard', 'Asset-Coach', etc.) zurate zu ziehen, um deren Fachwissen zu bündeln.",
+          category: "Infrastruktur",
+          icon: "🧠",
+          searchKeywords: [
+            "koordination",
+            "orchestrierung",
+            "delegation",
+            "fakten",
+            "konsolidierung",
+          ],
+        });
+
       if (!isMounted) return;
       if (created && seeded) {
         const newTemplate = instantiateTemplates([seeded])[0];
@@ -179,6 +197,13 @@ const FactoryPage = () => {
 
       if (flowCreated && flowSeeded) {
         const newTemplate = instantiateTemplates([flowSeeded])[0];
+        if (newTemplate) {
+          setTemplates((prev) => [newTemplate, ...prev]);
+        }
+      }
+
+      if (coordinatorCreated && coordinatorSeeded) {
+        const newTemplate = instantiateTemplates([coordinatorSeeded])[0];
         if (newTemplate) {
           setTemplates((prev) => [newTemplate, ...prev]);
         }

@@ -213,6 +213,7 @@ export interface Database {
           user_id: string;
           organization_id: string | null;
           payload: Json;
+          summary_payload: Json | null;
           created_at: string | null;
         };
         Insert: {
@@ -220,6 +221,7 @@ export interface Database {
           user_id: string;
           organization_id?: string | null;
           payload: Json;
+          summary_payload?: Json | null;
           created_at?: string | null;
         };
         Update: {
@@ -227,6 +229,7 @@ export interface Database {
           user_id?: string;
           organization_id?: string | null;
           payload?: Json;
+          summary_payload?: Json | null;
           created_at?: string | null;
         };
         Relationships: [];

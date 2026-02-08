@@ -1,8 +1,8 @@
 /**
  * @MODULE_ID app.home
  * @STAGE stage-1
- * @DATA_INPUTS ["getLatestProgress", "assetCoachTasks", "assetIdentificationTasks"]
- * @REQUIRED_TOOLS ["YuhConnector", "getButtonClasses", "getLatestProgress", "supabase"]
+ * @DATA_INPUTS ["fetchUserProgress", "assetCoachTasks", "assetIdentificationTasks"]
+ * @REQUIRED_TOOLS ["YuhConnector", "getButtonClasses", "fetchUserProgress", "supabase"]
  */
 "use client";
 
@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getButtonClasses } from "@/shared/components/Button";
 import { YuhConnector } from "@/shared/tools/YuhConnector";
-import { getLatestProgress } from "@/core/progress";
+import { fetchUserProgress } from "@/core/progress";
 import { supabase, isSupabaseConfigured } from "@/core/supabase";
 import { assetCoachTasks } from "@/features/stage-1/asset-coach/tasks.config";
 import { assetIdentificationTasks } from "@/features/stage-1/asset-identification/tasks.config";
@@ -24,11 +24,7 @@ export default function Home() {
     stageId: string | null;
     moduleId: string | null;
     completedTasks: string[];
-  }>({
-    stageId: null,
-    moduleId: null,
-    completedTasks: [],
-  });
+  } | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -45,22 +41,26 @@ export default function Home() {
       if (!isMounted) return;
 
       if (error || !data.user) {
-        setProgress({ stageId: null, moduleId: null, completedTasks: [] });
+        setProgress(null);
         setIsLoading(false);
         setLastSync(new Date().toISOString());
         return;
       }
 
-      const latest = await getLatestProgress(data.user.id);
+      const latest = await fetchUserProgress(data.user.id);
       if (!isMounted) return;
 
-      setProgress({
-        stageId: latest.stageId,
-        moduleId: latest.moduleId,
-        completedTasks: latest.completedTasks ?? [],
-      });
+      setProgress(
+        latest
+          ? {
+              stageId: latest.stageId,
+              moduleId: latest.moduleId,
+              completedTasks: latest.completedTasks ?? [],
+            }
+          : null,
+      );
       setIsLoading(false);
-      setLastSync(new Date().toISOString());
+      setLastSync(latest?.updatedAt ?? new Date().toISOString());
     };
 
     fetchProgress();
@@ -70,8 +70,8 @@ export default function Home() {
     };
   }, []);
 
-  const stageId = progress.stageId ?? defaultStage;
-  const moduleId = progress.moduleId ?? defaultModule;
+  const stageId = progress?.stageId ?? defaultStage;
+  const moduleId = progress?.moduleId ?? defaultModule;
   const moduleKey = `${stageId}/${moduleId}`;
   const defaultKey = `${defaultStage}/${defaultModule}`;
 
@@ -100,17 +100,20 @@ export default function Home() {
 
   const activeTasks = taskRegistry[moduleKey] ?? taskRegistry[defaultKey];
   const totalTasks = activeTasks?.length ?? 0;
-  const completedCount = Math.min(progress.completedTasks.length, totalTasks);
+  const completedCount = Math.min(progress?.completedTasks.length ?? 0, totalTasks);
   const progressPercent = useMemo(() => {
     if (!totalTasks) return 0;
-    return Math.round((completedCount / totalTasks) * 100);
+    return (completedCount / totalTasks) * 100;
   }, [completedCount, totalTasks]);
 
-  const hasProgress = Boolean(progress.stageId && progress.moduleId);
+  const hasProgress = Boolean(progress?.stageId && progress?.moduleId);
   const isModuleCompleted = hasProgress && completedCount >= totalTasks;
 
   const activeMeta = moduleMeta[moduleKey] ?? moduleMeta[defaultKey];
-  const primaryLabel = hasProgress ? "Continue" : "Start";
+  const stageNumber = stageId.replace("stage-", "");
+  const primaryLabel = hasProgress
+    ? `Continue Stage ${stageNumber}`
+    : "Start Stage 1";
 
   const buildModuleRoute = (stage: string, module: string) => {
     const normalizedStage = stage.startsWith("stage-")

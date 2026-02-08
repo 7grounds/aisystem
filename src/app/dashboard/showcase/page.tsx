@@ -185,6 +185,8 @@ const ShowcasePage = () => {
     return words.some((word) => levenshtein(query, word) <= threshold);
   };
 
+  const hiddenAgents = useMemo(() => new Set(["Vault-Guardian"]), []);
+
   const galleryAgents = useMemo(() => {
     const results: AgentShowcase[] = [];
     const usedNames = new Set<string>();
@@ -220,6 +222,7 @@ const ShowcasePage = () => {
     });
 
     templates.forEach((template) => {
+      if (hiddenAgents.has(template.name)) return;
       if (usedNames.has(template.name)) return;
       results.push({
         id: template.id,
@@ -235,7 +238,7 @@ const ShowcasePage = () => {
     });
 
     return results;
-  }, [organization?.id, templateIndex, templates]);
+  }, [hiddenAgents, organization?.id, templateIndex, templates]);
 
   const filteredAgents = useMemo(() => {
     const normalizedSearch = normalizeText(searchTerm);

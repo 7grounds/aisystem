@@ -6,6 +6,7 @@
  */
 import type { Database } from "@/core/types/database.types";
 import { supabase } from "@/core/supabase";
+import { applyResponseGuard, scanUserInput } from "@/core/vault-guardian";
 
 type AgentDefinitionRow =
   Database["public"]["Tables"]["agent_definitions"]["Row"];
@@ -23,6 +24,8 @@ export type SpecialistConsultation = {
   agentName: string;
   response: string;
   timestamp: string;
+  blocked?: boolean;
+  warning?: string | null;
 };
 
 export type TechnicalTaskDispatch = {
@@ -300,6 +303,22 @@ export const consultSpecialistAgent = async (
   agentId: string,
   context: string,
 ) => {
+  const scan = scanUserInput(context);
+
+  if (scan.blocked) {
+    return {
+      data: {
+        agentId,
+        agentName: "Vault-Guardian",
+        response: scan.warning ?? "Sicherheitswarnung: Anfrage blockiert.",
+        timestamp: new Date().toISOString(),
+        blocked: true,
+        warning: scan.warning,
+      } as SpecialistConsultation,
+      error: null,
+    };
+  }
+
   const { data, error } = await supabase
     .from("agent_templates")
     .select("id, name, system_prompt")
@@ -323,7 +342,7 @@ export const consultSpecialistAgent = async (
     data: {
       agentId: data.id,
       agentName: data.name,
-      response,
+      response: applyResponseGuard(response),
       timestamp: new Date().toISOString(),
     } as SpecialistConsultation,
     error: null,
@@ -341,6 +360,11 @@ export const dispatchTechnicalTask = async ({
   organizationId: string | null;
   task: string;
 }) => {
+  const scan = scanUserInput(task);
+  if (scan.blocked) {
+    return { data: null, error: new Error(scan.warning ?? "Task blocked") };
+  }
+
   const payload = {
     type: "dev_task",
     coordinator_id: coordinatorId ?? null,

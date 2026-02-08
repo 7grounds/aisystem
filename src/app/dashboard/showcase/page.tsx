@@ -21,6 +21,7 @@ type AgentShowcase = {
   title: string;
   description: string;
   roi: string;
+  category: string;
 };
 
 type ChatMessage = {
@@ -35,6 +36,7 @@ const AGENT_SHOWCASE: AgentShowcase[] = [
     title: "Der Steuer-Optimierer",
     description: "Optimiert Schweizer Steuerlast durch saubere Abzüge.",
     roi: "Reduziert steuerliche Reibung durch strukturierte Abzüge, Timing und Einkommensglättung.",
+    category: "Finanzen",
   },
   {
     id: "inheritance-planner",
@@ -42,6 +44,7 @@ const AGENT_SHOWCASE: AgentShowcase[] = [
     title: "Der Erbschafts-Planer",
     description: "Strukturiert Vermögensübergabe und Pflichtanteile.",
     roi: "Minimiert Übergabekosten und rechtliche Risiken durch klare Strukturierung.",
+    category: "Recht",
   },
   {
     id: "crypto-guardian",
@@ -49,6 +52,7 @@ const AGENT_SHOWCASE: AgentShowcase[] = [
     title: "Der Krypto-Guardian",
     description: "Bewertet Risiko, Verwahrung und Steuerfolgen von Crypto.",
     roi: "Schützt vor Volatilitäts- und Compliance-Fallen durch klare Limits.",
+    category: "Technik",
   },
   {
     id: "fee-hunter",
@@ -56,6 +60,7 @@ const AGENT_SHOWCASE: AgentShowcase[] = [
     title: "Der Gebühren-Jäger",
     description: "Findet versteckte Gebühren und Rebalancing-Verluste.",
     roi: "Sichert Rendite, indem unnötige Gebührenströme eliminiert werden.",
+    category: "Finanzen",
   },
 ];
 
@@ -96,6 +101,24 @@ const ShowcasePage = () => {
     );
   }, [organization?.id, templates]);
 
+  const availableAgents = useMemo(() => {
+    return new Set(
+      templates
+        .filter((template) => template.organizationId === null)
+        .map((template) => template.name),
+    );
+  }, [templates]);
+
+  const groupedAgents = useMemo(() => {
+    return AGENT_SHOWCASE.reduce<Record<string, AgentShowcase[]>>((acc, agent) => {
+      if (!acc[agent.category]) {
+        acc[agent.category] = [];
+      }
+      acc[agent.category].push(agent);
+      return acc;
+    }, {});
+  }, []);
+
   useEffect(() => {
     if (!showArchitectChat) {
       setMessages([]);
@@ -118,44 +141,59 @@ const ShowcasePage = () => {
           <span>Agent-Showcase</span>
           <span>Galerie</span>
         </div>
-        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {AGENT_SHOWCASE.map((agent) => {
-            const isActive = activatedAgents.has(agent.title);
-            return (
-              <button
-                key={agent.id}
-                className="flex h-full flex-col justify-between rounded-2xl border border-slate-800/80 bg-slate-900/60 px-4 py-4 text-left text-sm text-slate-200 transition hover:border-emerald-400/60"
-                type="button"
-                onClick={() => setSelectedAgent(agent)}
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xl">{agent.icon}</span>
-                    <span
-                      className={`rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
-                        isActive
-                          ? "bg-emerald-500/20 text-emerald-300"
-                          : "bg-slate-800 text-slate-300"
-                      }`}
+        <div className="mt-6 space-y-8">
+          {Object.entries(groupedAgents).map(([category, agents]) => (
+            <div key={category} className="space-y-3">
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
+                {category}
+              </p>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {agents.map((agent) => {
+                  const isActive = activatedAgents.has(agent.title);
+                  const isAvailable = availableAgents.has(agent.title);
+                  const statusLabel = isActive
+                    ? "Aktiviert"
+                    : isAvailable
+                      ? "Verfügbar"
+                      : "Nicht verfügbar";
+                  return (
+                    <button
+                      key={agent.id}
+                      className="flex h-full flex-col justify-between rounded-2xl border border-slate-800/80 bg-slate-900/60 px-4 py-4 text-left text-sm text-slate-200 transition hover:border-emerald-400/60"
+                      type="button"
+                      onClick={() => setSelectedAgent(agent)}
                     >
-                      {isActive ? "Aktiviert" : "Verfügbar"}
-                    </span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-100">
-                      {agent.title}
-                    </h3>
-                    <p className="mt-2 text-xs uppercase tracking-[0.2em] text-slate-400">
-                      {agent.description}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4 text-xs uppercase tracking-[0.2em] text-emerald-200">
-                  Details ansehen
-                </div>
-              </button>
-            );
-          })}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xl">{agent.icon}</span>
+                          <span
+                            className={`rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
+                              isActive
+                                ? "bg-emerald-500/20 text-emerald-300"
+                                : "bg-slate-800 text-slate-300"
+                            }`}
+                          >
+                            {statusLabel}
+                          </span>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-slate-100">
+                            {agent.title}
+                          </h3>
+                          <p className="mt-2 text-xs uppercase tracking-[0.2em] text-slate-400">
+                            {agent.description}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-4 text-xs uppercase tracking-[0.2em] text-emerald-200">
+                        Details ansehen
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
 
           <button
             className="flex h-full flex-col justify-between rounded-2xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-4 text-left text-sm text-emerald-200 transition hover:border-emerald-300"

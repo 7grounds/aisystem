@@ -43,6 +43,7 @@ export interface Database {
           description: string;
           system_prompt: string;
           organization_id: string | null;
+          category: string | null;
           created_at: string | null;
         };
         Insert: {
@@ -51,6 +52,7 @@ export interface Database {
           description: string;
           system_prompt: string;
           organization_id?: string | null;
+          category?: string | null;
           created_at?: string | null;
         };
         Update: {
@@ -59,6 +61,7 @@ export interface Database {
           description?: string;
           system_prompt?: string;
           organization_id?: string | null;
+          category?: string | null;
           created_at?: string | null;
         };
         Relationships: [];
@@ -138,6 +141,30 @@ export interface Database {
           completed_tasks?: string[] | null;
           is_completed?: boolean | null;
           updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      universal_history: {
+        Row: {
+          id: string;
+          user_id: string;
+          organization_id: string | null;
+          payload: Json;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          organization_id?: string | null;
+          payload: Json;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          organization_id?: string | null;
+          payload?: Json;
+          created_at?: string | null;
         };
         Relationships: [];
       };

@@ -22,12 +22,13 @@ import {
   instantiateAgents,
   type AgentInstance,
 } from "@/core/agent-factory";
+import { DynamicPayloadRenderer } from "@/shared/components/DynamicPayloadRenderer";
 
-type AssetHistoryRow =
-  Database["public"]["Tables"]["user_asset_history"]["Row"];
+type UniversalHistoryRow =
+  Database["public"]["Tables"]["universal_history"]["Row"];
 
 type RecentAnalysesProps = {
-  entries: AssetHistoryRow[];
+  entries: UniversalHistoryRow[];
 };
 
 const formatDate = (value: string | null) => {
@@ -43,8 +44,24 @@ const formatDate = (value: string | null) => {
 
 const RecentAnalyses = ({ entries }: RecentAnalysesProps) => {
   if (entries.length === 0) {
-    return <p className="text-sm text-slate-400">No asset history yet.</p>;
+    return <p className="text-sm text-slate-400">No history yet.</p>;
   }
+
+  const getPayloadTitle = (payload: Database["public"]["Tables"]["universal_history"]["Row"]["payload"]) => {
+    if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+      const record = payload as Record<string, unknown>;
+      if (typeof record.title === "string" && record.title.trim()) {
+        return record.title;
+      }
+      if (typeof record.name === "string" && record.name.trim()) {
+        return record.name;
+      }
+      if (typeof record.type === "string" && record.type.trim()) {
+        return record.type;
+      }
+    }
+    return "History Entry";
+  };
 
   return (
     <div className="space-y-3">
@@ -55,16 +72,16 @@ const RecentAnalyses = ({ entries }: RecentAnalysesProps) => {
         >
           <div className="flex items-center justify-between">
             <span className="font-semibold text-slate-100">
-              {entry.asset_name ?? entry.isin}
+              {getPayloadTitle(entry.payload)}
             </span>
             <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
-              {entry.isin}
+              {formatDate(entry.created_at)}
             </span>
           </div>
           <div className="flex flex-wrap items-center justify-between text-xs uppercase tracking-[0.2em] text-slate-400">
-            <span>Datum: {formatDate(entry.analyzed_at)}</span>
             <span>Org: {entry.organization_id ?? "--"}</span>
           </div>
+          <DynamicPayloadRenderer payload={entry.payload} />
         </div>
       ))}
     </div>
@@ -81,7 +98,7 @@ const DashboardPage = () => {
     moduleId: string | null;
     completedTasks: string[];
   } | null>(null);
-  const [assetHistory, setAssetHistory] = useState<AssetHistoryRow[]>([]);
+  const [assetHistory, setAssetHistory] = useState<UniversalHistoryRow[]>([]);
   const [activeTab, setActiveTab] = useState<"overview" | "special-tools">(
     "overview",
   );
@@ -129,10 +146,10 @@ const DashboardPage = () => {
       );
 
       const { data: historyRows, error: historyError } = await supabase
-        .from("user_asset_history")
-        .select("id, isin, asset_name, last_amount, last_fee, currency, analyzed_at")
+        .from("universal_history")
+        .select("id, payload, organization_id, created_at")
         .eq("user_id", data.user.id)
-        .order("analyzed_at", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(5);
 
       if (!isMounted) return;
@@ -406,7 +423,7 @@ const DashboardPage = () => {
 
           <section className="rounded-3xl border border-slate-800/70 bg-slate-950 px-8 py-8 text-slate-100 shadow-[0_20px_55px_rgba(15,23,42,0.4)]">
             <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-slate-400">
-              <span>Recent Asset Analysis</span>
+          <span>Recent History</span>
               <span>Last 5</span>
             </div>
             <div className="mt-5">

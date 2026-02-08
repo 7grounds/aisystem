@@ -157,15 +157,19 @@ export const runAssetCoachAgent = async (
     const isin = isLikelyIsin(assetInput)
       ? assetInput.trim().toUpperCase()
       : asset?.symbol ?? assetInput.trim();
-    await supabase.from("user_asset_history").insert({
+    await supabase.from("universal_history").insert({
       user_id: persistence.userId,
       organization_id: persistence.organizationId,
-      isin,
-      asset_name: asset?.name ?? label,
-      last_amount: amountChf,
-      last_fee: yuhFee,
-      currency: asset?.currency ?? "CHF",
-      analyzed_at: new Date().toISOString(),
+      payload: {
+        type: "asset_analysis",
+        isin,
+        asset_name: asset?.name ?? label,
+        amount: amountChf,
+        fee: yuhFee,
+        currency: asset?.currency ?? "CHF",
+        analysis: finalResponse,
+      },
+      created_at: new Date().toISOString(),
     });
     persisted = true;
   }

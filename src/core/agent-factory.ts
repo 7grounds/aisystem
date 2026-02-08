@@ -174,6 +174,7 @@ export const createSpecialistAgent = async ({
   icon,
   searchKeywords,
   executiveApproval,
+  approvalContext,
 }: {
   task: string;
   name?: string;
@@ -184,8 +185,16 @@ export const createSpecialistAgent = async ({
   icon?: string | null;
   searchKeywords?: string[];
   executiveApproval?: string | null;
+  approvalContext?: {
+    userId?: string | null;
+    organizationId?: string | null;
+    decisions?: string[];
+    openTasks?: string[];
+    flowStatus?: string | null;
+    source?: string;
+  };
 }) => {
-  assertExecutiveApproval(executiveApproval);
+  await assertExecutiveApproval(executiveApproval, approvalContext);
   const trimmedTask = task.trim();
   const agentName = name?.trim() || trimmedTask || "Specialist Agent";
   const agentDescription =
@@ -258,6 +267,7 @@ export const registerNewAgent = async ({
   icon,
   searchKeywords,
   executiveApproval,
+  approvalContext,
 }: {
   name: string;
   description: string;
@@ -267,8 +277,16 @@ export const registerNewAgent = async ({
   icon?: string | null;
   searchKeywords?: string[];
   executiveApproval?: string | null;
+  approvalContext?: {
+    userId?: string | null;
+    organizationId?: string | null;
+    decisions?: string[];
+    openTasks?: string[];
+    flowStatus?: string | null;
+    source?: string;
+  };
 }) => {
-  assertExecutiveApproval(executiveApproval);
+  await assertExecutiveApproval(executiveApproval, approvalContext);
   let query = supabase
     .from("agent_templates")
     .select(
@@ -302,6 +320,7 @@ export const registerNewAgent = async ({
     icon,
     searchKeywords,
     executiveApproval,
+    approvalContext,
   });
 
   return { data: data as AgentTemplateRow | null, created: true, error };
@@ -370,7 +389,14 @@ export const dispatchTechnicalTask = async ({
   task: string;
   executiveApproval?: string | null;
 }) => {
-  assertExecutiveApproval(executiveApproval);
+  await assertExecutiveApproval(executiveApproval, {
+    userId,
+    organizationId,
+    decisions: ["Technical task approved."],
+    openTasks: [task],
+    flowStatus: "queued",
+    source: "dispatchTechnicalTask",
+  });
   const scan = scanUserInput(task);
   if (scan.blocked) {
     return { data: null, error: new Error(scan.warning ?? "Task blocked") };
@@ -423,7 +449,14 @@ export const logManagementProtocol = async ({
   details?: string;
   executiveApproval?: string | null;
 }) => {
-  assertExecutiveApproval(executiveApproval);
+  await assertExecutiveApproval(executiveApproval, {
+    userId,
+    organizationId,
+    decisions: ["Management log approved."],
+    openTasks: [],
+    flowStatus: "logged",
+    source: "logManagementProtocol",
+  });
   const allowedAgents = new Set([
     "Koordinator",
     "Master-Manager",
@@ -473,7 +506,14 @@ export const consolidateConversation = async ({
   summary: string[];
   executiveApproval?: string | null;
 }) => {
-  assertExecutiveApproval(executiveApproval);
+  await assertExecutiveApproval(executiveApproval, {
+    userId,
+    organizationId,
+    decisions: ["Conversation summary stored."],
+    openTasks: [],
+    flowStatus: "stored",
+    source: "consolidateConversation",
+  });
   return supabase.from("universal_history").insert({
     user_id: userId,
     organization_id: organizationId,

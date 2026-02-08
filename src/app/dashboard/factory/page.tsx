@@ -211,6 +211,19 @@ const FactoryPage = () => {
           executiveApproval: EXECUTIVE_APPROVAL_TOKEN,
         });
 
+      const { data: registrarSeeded, created: registrarCreated } =
+        await registerNewAgent({
+          name: "Registrar",
+          description:
+            "Protokolliert Management-Entscheidungen und offenen Status.",
+          systemPrompt:
+            "Du protokollierst die Essenz der Management-Sitzungen. Filtere Rauschen heraus. Speichere nur: Getroffene Entscheidungen, offene Aufgaben und den aktuellen Flow-Status.",
+          category: "Management",
+          icon: "📜",
+          searchKeywords: ["protokoll", "entscheidungen", "aufgaben", "flow"],
+          executiveApproval: EXECUTIVE_APPROVAL_TOKEN,
+        });
+
       const { data: devopsSeeded, created: devopsCreated } =
         await registerNewAgent({
           name: "Dev-Ops Bot",
@@ -306,6 +319,13 @@ const FactoryPage = () => {
         }
       }
 
+      if (registrarCreated && registrarSeeded) {
+        const newTemplate = instantiateTemplates([registrarSeeded])[0];
+        if (newTemplate) {
+          setTemplates((prev) => [newTemplate, ...prev]);
+        }
+      }
+
       if (devopsCreated && devopsSeeded) {
         const newTemplate = instantiateTemplates([devopsSeeded])[0];
         if (newTemplate) {
@@ -385,7 +405,7 @@ const FactoryPage = () => {
   };
 
   const categoryOptions = ["Alle", "Legal", "Medizin", "Finanzen"];
-  const hiddenAgents = new Set(["Vault-Guardian"]);
+  const hiddenAgents = new Set(["Vault-Guardian", "Registrar"]);
   const filteredTemplates =
     categoryFilter === "Alle"
       ? templates.filter((template) => !hiddenAgents.has(template.name))

@@ -185,7 +185,10 @@ const ShowcasePage = () => {
     return words.some((word) => levenshtein(query, word) <= threshold);
   };
 
-  const hiddenAgents = useMemo(() => new Set(["Vault-Guardian"]), []);
+  const hiddenAgents = useMemo(
+    () => new Set(["Vault-Guardian", "Registrar"]),
+    [],
+  );
 
   const galleryAgents = useMemo(() => {
     const results: AgentShowcase[] = [];

@@ -1,7 +1,7 @@
 /**
  * @MODULE_ID app.home
  * @STAGE stage-1
- * @DATA_INPUTS ["fetchUserProgress", "resetAllProgress", "assetCoachTasks", "assetIdentificationTasks"]
+ * @DATA_INPUTS ["fetchUserProgress", "resetAllProgress", "assetCoachTasks", "assetIdentificationTasks", "feeMonsterTasks"]
  * @REQUIRED_TOOLS ["YuhConnector", "getButtonClasses", "fetchUserProgress", "resetAllProgress", "supabase"]
  */
 "use client";
@@ -14,6 +14,7 @@ import { fetchUserProgress, resetAllProgress } from "@/core/progress";
 import { supabase, isSupabaseConfigured } from "@/core/supabase";
 import { assetCoachTasks } from "@/features/stage-1/asset-coach/tasks.config";
 import { assetIdentificationTasks } from "@/features/stage-1/asset-identification/tasks.config";
+import { feeMonsterTasks } from "@/features/stage-2/fee-monster/tasks.config";
 
 export default function Home() {
   const defaultStage = "stage-1";
@@ -78,6 +79,7 @@ export default function Home() {
   const taskRegistry: Record<string, { id: string }[]> = {
     "stage-1/asset-coach": assetCoachTasks,
     "stage-1/asset-identification": assetIdentificationTasks,
+    "stage-2/fee-monster": feeMonsterTasks,
   };
 
   const moduleMeta: Record<
@@ -94,6 +96,12 @@ export default function Home() {
       title: "Stage 1: Asset Identification",
       description:
         "Map the full asset inventory to provide the AI coach with a precise wealth baseline.",
+      accent: "Active Module",
+    },
+    "stage-2/fee-monster": {
+      title: "Stage 2: The Fee-Monster",
+      description:
+        "Expose fee drag, compare alternatives, and engineer order sizing that protects compounding.",
       accent: "Active Module",
     },
   };
@@ -125,6 +133,10 @@ export default function Home() {
   const primaryHref = hasProgress
     ? buildModuleRoute(stageId, moduleId)
     : buildModuleRoute(defaultStage, defaultModule);
+
+  const showNextModule =
+    stageId === "stage-1" && isModuleCompleted && moduleId !== "fee-monster";
+  const nextModuleHref = "/stage-2/fee-monster";
 
   const showDevReset = process.env.NODE_ENV === "development";
 
@@ -161,15 +173,23 @@ export default function Home() {
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="text-3xl font-semibold">{activeMeta.title}</h2>
-              {isModuleCompleted ? (
-                <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
-                  ✓ Completed
-                </span>
-              ) : null}
+            {isModuleCompleted ? (
+              <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+                ✓ Completed
+              </span>
+            ) : null}
             </div>
             <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
               {activeMeta.description}
             </p>
+            {showNextModule ? (
+              <Link
+                className="text-xs uppercase tracking-[0.24em] text-emerald-300 hover:text-emerald-200"
+                href={nextModuleHref}
+              >
+                Next Module: Stage 2 / Fee-Monster
+              </Link>
+            ) : null}
           </div>
           <div className="pt-2">
             <Link

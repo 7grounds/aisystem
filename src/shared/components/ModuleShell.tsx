@@ -2,12 +2,15 @@
  * @MODULE_ID shared.components.module-shell
  * @STAGE global
  * @DATA_INPUTS ["tasks"]
- * @REQUIRED_TOOLS ["useProgressStore", "YuhConnector"]
+ * @REQUIRED_TOOLS ["useProgressStore", "YuhConnector", "updateTaskProgress", "supabase"]
  */
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useProgressStore } from "@/core/store";
+import { supabase } from "@/core/supabase";
+import { updateTaskProgress } from "@/core/progress";
 import { Card } from "@/shared/components/Card";
 import { Button } from "@/shared/components/Button";
 import { YuhConnector } from "@/shared/tools/YuhConnector";
@@ -19,6 +22,7 @@ type ModuleShellProps = {
   title: string;
   subtitle?: string;
   tasks: TaskDefinition[];
+  toolRenderers?: Record<string, (task: TaskDefinition) => ReactNode>;
 };
 
 export const ModuleShell = ({
@@ -27,11 +31,13 @@ export const ModuleShell = ({
   title,
   subtitle,
   tasks,
+  toolRenderers,
 }: ModuleShellProps) => {
   const [completedTasks, setCompletedTasksLocal] = useState<
     Record<string, boolean>
   >({});
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
+  const [userId, setUserId] = useState<string | null>(null);
   const { setTotalTasks, setCompletedTasks } = useProgressStore();
 
   const completedCount = useMemo(() => {
@@ -46,11 +52,36 @@ export const ModuleShell = ({
     setCompletedTasks(completedCount);
   }, [completedCount, setCompletedTasks]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const resolveUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (!isMounted) return;
+      if (error || !data.user) {
+        setUserId(null);
+        return;
+      }
+      setUserId(data.user.id);
+    };
+
+    resolveUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const toggleTask = (taskId: string) => {
+    const isCompleting = !completedTasks[taskId];
     setCompletedTasksLocal((prev) => ({
       ...prev,
-      [taskId]: !prev[taskId],
+      [taskId]: isCompleting,
     }));
+
+    if (isCompleting && userId) {
+      updateTaskProgress(userId, stageId, moduleId, taskId);
+    }
   };
 
   return (
@@ -149,7 +180,9 @@ export const ModuleShell = ({
                       currency={task.currency}
                       label={task.actionLabel}
                     />
-                  ) : null}
+                  ) : (
+                    toolRenderers?.[task.toolId]?.(task) ?? null
+                  )}
                   <span className="text-xs uppercase tracking-[0.18em] text-slate-400">
                     Tool: {task.toolId}
                   </span>

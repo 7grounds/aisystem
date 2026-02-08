@@ -23,7 +23,7 @@ export type AICoachTask = TaskBase & {
   prompt: string;
 };
 
-export type ToolActionTask = TaskBase & {
+export type YuhConnectorTask = TaskBase & {
   type: "tool-action";
   toolId: "yuh-connector";
   actionLabel: string;
@@ -31,5 +31,12 @@ export type ToolActionTask = TaskBase & {
   amount?: number;
   currency?: string;
 };
+
+export type FeeCalculatorTask = TaskBase & {
+  type: "tool-action";
+  toolId: "fee-calculator";
+};
+
+export type ToolActionTask = YuhConnectorTask | FeeCalculatorTask;
 
 export type TaskDefinition = InfoTask | InputTask | AICoachTask | ToolActionTask;

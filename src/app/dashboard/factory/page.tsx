@@ -14,6 +14,7 @@ import {
   registerNewAgent,
   type AgentTemplate,
 } from "@/core/agent-factory";
+import { EXECUTIVE_APPROVAL_TOKEN } from "@/core/governance";
 import { useTenant } from "@/core/tenant-context";
 import { supabase } from "@/core/supabase";
 
@@ -75,6 +76,7 @@ const FactoryPage = () => {
           "nutzungsentschädigung",
           "einstimmigkeitsprinzip",
         ],
+        executiveApproval: EXECUTIVE_APPROVAL_TOKEN,
       });
 
       const { data: medSeeded, created: medCreated } = await registerNewAgent({
@@ -93,6 +95,7 @@ const FactoryPage = () => {
           "medizin",
           "diagnostik",
         ],
+        executiveApproval: EXECUTIVE_APPROVAL_TOKEN,
       });
 
       const { data: optimizerSeeded, created: optimizerCreated } =
@@ -111,6 +114,7 @@ const FactoryPage = () => {
             "effizienz",
             "präzision",
           ],
+          executiveApproval: EXECUTIVE_APPROVAL_TOKEN,
         });
 
       const { data: validatorSeeded, created: validatorCreated } =
@@ -129,6 +133,7 @@ const FactoryPage = () => {
             "struktur",
             "datenqualität",
           ],
+          executiveApproval: EXECUTIVE_APPROVAL_TOKEN,
         });
 
       const { data: flowSeeded, created: flowCreated } = await registerNewAgent({
@@ -146,6 +151,7 @@ const FactoryPage = () => {
           "fortschritt",
           "drop-off",
         ],
+        executiveApproval: EXECUTIVE_APPROVAL_TOKEN,
       });
 
       const { data: coordinatorSeeded, created: coordinatorCreated } =
@@ -164,6 +170,7 @@ const FactoryPage = () => {
             "fakten",
             "konsolidierung",
           ],
+          executiveApproval: EXECUTIVE_APPROVAL_TOKEN,
         });
 
       const { data: masterSeeded, created: masterCreated } =
@@ -182,6 +189,7 @@ const FactoryPage = () => {
             "koordination",
             "summary",
           ],
+          executiveApproval: EXECUTIVE_APPROVAL_TOKEN,
         });
 
       const { data: guardianSeeded, created: guardianCreated } =
@@ -200,6 +208,7 @@ const FactoryPage = () => {
             "schutz",
             "sicherheit",
           ],
+          executiveApproval: EXECUTIVE_APPROVAL_TOKEN,
         });
 
       const { data: devopsSeeded, created: devopsCreated } =
@@ -218,6 +227,7 @@ const FactoryPage = () => {
             "api",
             "performance",
           ],
+          executiveApproval: EXECUTIVE_APPROVAL_TOKEN,
         });
 
       const { data: resourceSeeded, created: resourceCreated } =
@@ -236,6 +246,7 @@ const FactoryPage = () => {
             "kosten",
             "modelle",
           ],
+          executiveApproval: EXECUTIVE_APPROVAL_TOKEN,
         });
 
       if (!isMounted) return;
@@ -343,6 +354,7 @@ const FactoryPage = () => {
     const { data, error } = await createSpecialistAgent({
       task: taskInput,
       organizationId: organization?.id ?? null,
+      executiveApproval: EXECUTIVE_APPROVAL_TOKEN,
     });
     if (error || !data) {
       setCreateError(error?.message ?? "Template konnte nicht erstellt werden.");

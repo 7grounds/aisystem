@@ -91,6 +91,7 @@ export const runAssetCoachAgent = async (
   basePrompt?: string,
   onStatus?: (step: AgentStatusStep, steps: AgentStatusStep[]) => void,
   persistence?: AgentPersistenceContext,
+  executiveApproval?: string | null,
 ): Promise<AgentOutput> => {
   const statusSteps: AgentStatusStep[] = [];
   const pushStatus = (label: string) => {
@@ -153,7 +154,11 @@ export const runAssetCoachAgent = async (
   ].join("\n\n");
 
   let persisted = false;
-  if (persistence?.userId && persistence.organizationId) {
+  if (
+    persistence?.userId &&
+    persistence.organizationId &&
+    executiveApproval === "CHECK-OK"
+  ) {
     const isin = isLikelyIsin(assetInput)
       ? assetInput.trim().toUpperCase()
       : asset?.symbol ?? assetInput.trim();

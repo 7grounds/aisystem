@@ -16,6 +16,7 @@ import { Card } from "@/shared/components/Card";
 import { Button } from "@/shared/components/Button";
 import { YuhConnector } from "@/shared/tools/YuhConnector";
 import { AgentConsole } from "@/shared/components/AgentConsole";
+import { EXECUTIVE_APPROVAL_TOKEN } from "@/core/governance";
 import {
   generateAssetCoachPrompt,
   generateSwissWealthAnalysis,
@@ -165,6 +166,7 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
           userId,
           organizationId: organization?.id ?? null,
         },
+        EXECUTIVE_APPROVAL_TOKEN,
       );
       if (!isActive) return;
       setAgentStatus(result.statusSteps);

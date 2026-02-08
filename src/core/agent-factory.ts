@@ -7,6 +7,7 @@
 import type { Database } from "@/core/types/database.types";
 import { supabase } from "@/core/supabase";
 import { applyResponseGuard, scanUserInput } from "@/core/vault-guardian";
+import { assertExecutiveApproval } from "@/core/governance";
 
 type AgentDefinitionRow =
   Database["public"]["Tables"]["agent_definitions"]["Row"];
@@ -172,6 +173,7 @@ export const createSpecialistAgent = async ({
   category,
   icon,
   searchKeywords,
+  executiveApproval,
 }: {
   task: string;
   name?: string;
@@ -181,7 +183,9 @@ export const createSpecialistAgent = async ({
   category?: string | null;
   icon?: string | null;
   searchKeywords?: string[];
+  executiveApproval?: string | null;
 }) => {
+  assertExecutiveApproval(executiveApproval);
   const trimmedTask = task.trim();
   const agentName = name?.trim() || trimmedTask || "Specialist Agent";
   const agentDescription =
@@ -253,6 +257,7 @@ export const registerNewAgent = async ({
   category,
   icon,
   searchKeywords,
+  executiveApproval,
 }: {
   name: string;
   description: string;
@@ -261,7 +266,9 @@ export const registerNewAgent = async ({
   category?: string | null;
   icon?: string | null;
   searchKeywords?: string[];
+  executiveApproval?: string | null;
 }) => {
+  assertExecutiveApproval(executiveApproval);
   let query = supabase
     .from("agent_templates")
     .select(
@@ -294,6 +301,7 @@ export const registerNewAgent = async ({
     category,
     icon,
     searchKeywords,
+    executiveApproval,
   });
 
   return { data: data as AgentTemplateRow | null, created: true, error };
@@ -354,12 +362,15 @@ export const dispatchTechnicalTask = async ({
   userId,
   organizationId,
   task,
+  executiveApproval,
 }: {
   coordinatorId?: string | null;
   userId: string;
   organizationId: string | null;
   task: string;
+  executiveApproval?: string | null;
 }) => {
+  assertExecutiveApproval(executiveApproval);
   const scan = scanUserInput(task);
   if (scan.blocked) {
     return { data: null, error: new Error(scan.warning ?? "Task blocked") };
@@ -403,20 +414,41 @@ export const logManagementProtocol = async ({
   agentName,
   summary,
   details,
+  executiveApproval,
 }: {
   userId: string;
   organizationId: string | null;
   agentName: string;
   summary: string;
   details?: string;
+  executiveApproval?: string | null;
 }) => {
+  assertExecutiveApproval(executiveApproval);
+  const allowedAgents = new Set([
+    "Koordinator",
+    "Master-Manager",
+    "Resource-Controller",
+  ]);
+  if (!allowedAgents.has(agentName)) {
+    throw new Error("Agent not authorized to report to owner.");
+  }
+
+  const normalizeSummary = (text: string) => {
+    const lines = text
+      .split(/\n|•|-|\u2022/g)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const bullets = lines.length ? lines : [text.trim()];
+    return bullets.slice(0, 3).map((line) => `- ${line}`).join("\n");
+  };
+
   return supabase.from("universal_history").insert({
     user_id: userId,
     organization_id: organizationId,
     payload: {
       type: "management_log",
       agent_name: agentName,
-      summary,
+      summary: agentName === "Koordinator" ? normalizeSummary(summary) : summary,
       details: details ?? null,
     },
     created_at: new Date().toISOString(),
@@ -433,12 +465,15 @@ export const consolidateConversation = async ({
   organizationId,
   payload,
   summary,
+  executiveApproval,
 }: {
   userId: string;
   organizationId: string | null;
   payload: ConversationEntry[];
   summary: string[];
+  executiveApproval?: string | null;
 }) => {
+  assertExecutiveApproval(executiveApproval);
   return supabase.from("universal_history").insert({
     user_id: userId,
     organization_id: organizationId,

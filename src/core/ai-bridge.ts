@@ -6,6 +6,7 @@
  */
 import { logManagementProtocol } from "@/core/agent-factory";
 import { calculateCost, estimateTokens } from "@/core/cost-engine";
+import { EXECUTIVE_APPROVAL_TOKEN } from "@/core/governance";
 
 type ProviderId = "openai" | "anthropic" | "google";
 
@@ -106,6 +107,7 @@ export const getSmartAIResponse = async ({
           agentName: "Koordinator",
           summary: "Primärsystem ausgelastet – wechsle auf Backup-Intelligenz.",
           details: `Failover from ${providerOrder[0]} to ${provider}.`,
+          executiveApproval: EXECUTIVE_APPROVAL_TOKEN,
         });
       }
 

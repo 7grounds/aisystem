@@ -15,6 +15,9 @@ export default function Home() {
         <p className="text-sm text-slate-400">
           Navigate directly to the management cockpit.
         </p>
+        <p className="text-xs uppercase tracking-[0.24em] text-slate-500">
+          Boardroom access for owners only.
+        </p>
       </div>
 
       <a

@@ -45,6 +45,7 @@ export interface Database {
           organization_id: string | null;
           category: string | null;
           icon: string | null;
+          search_keywords: string[] | null;
           created_at: string | null;
         };
         Insert: {
@@ -55,6 +56,7 @@ export interface Database {
           organization_id?: string | null;
           category?: string | null;
           icon?: string | null;
+          search_keywords?: string[] | null;
           created_at?: string | null;
         };
         Update: {
@@ -65,6 +67,7 @@ export interface Database {
           organization_id?: string | null;
           category?: string | null;
           icon?: string | null;
+          search_keywords?: string[] | null;
           created_at?: string | null;
         };
         Relationships: [];

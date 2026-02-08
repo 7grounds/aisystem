@@ -29,6 +29,7 @@ export type AgentTemplate = {
   organizationId: string | null;
   category: string | null;
   icon: string | null;
+  searchKeywords: string[];
   createdAt: string | null;
 };
 
@@ -50,7 +51,7 @@ export const fetchAgentTemplates = async (
   let query = supabase
     .from("agent_templates")
     .select(
-      "id, name, description, system_prompt, organization_id, category, icon, created_at",
+      "id, name, description, system_prompt, organization_id, category, icon, search_keywords, created_at",
     )
     .order("created_at", { ascending: false });
 
@@ -84,6 +85,31 @@ const defaultTemplatePrompt = (task: string) => {
     "Operate in a Swiss wealth engineering tone with compliance and precision.",
     "If critical data is missing, ask for it before making recommendations.",
   ].join("\n");
+};
+
+const buildSearchKeywords = ({
+  task,
+  name,
+  description,
+  category,
+}: {
+  task: string;
+  name?: string;
+  description?: string;
+  category?: string | null;
+}) => {
+  const seed = [task, name, description, category]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+    .replace(/[^a-z0-9äöüß\s-]/gi, " ");
+
+  const keywords = seed
+    .split(/\s+/g)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 2);
+
+  return Array.from(new Set(keywords));
 };
 
 export const createAgentDefinition = async ({
@@ -128,6 +154,7 @@ export const createSpecialistAgent = async ({
   organizationId,
   category,
   icon,
+  searchKeywords,
 }: {
   task: string;
   name?: string;
@@ -136,12 +163,22 @@ export const createSpecialistAgent = async ({
   organizationId?: string | null;
   category?: string | null;
   icon?: string | null;
+  searchKeywords?: string[];
 }) => {
   const trimmedTask = task.trim();
   const agentName = name?.trim() || trimmedTask || "Specialist Agent";
   const agentDescription =
     description?.trim() || `Spezial-Agent für ${trimmedTask || "Sonderfälle"}.`;
   const prompt = systemPrompt?.trim() || defaultTemplatePrompt(trimmedTask);
+  const keywords =
+    searchKeywords && searchKeywords.length > 0
+      ? Array.from(new Set(searchKeywords))
+      : buildSearchKeywords({
+          task: trimmedTask,
+          name: agentName,
+          description: agentDescription,
+          category,
+        });
 
   const { data, error } = await supabase
     .from("agent_templates")
@@ -152,9 +189,10 @@ export const createSpecialistAgent = async ({
       organization_id: organizationId ?? null,
       category: category ?? "General",
       icon: icon ?? "🧠",
+      search_keywords: keywords,
     })
     .select(
-      "id, name, description, system_prompt, organization_id, category, icon, created_at",
+      "id, name, description, system_prompt, organization_id, category, icon, search_keywords, created_at",
     )
     .single();
 
@@ -185,6 +223,7 @@ export const instantiateTemplates = (
     organizationId: row.organization_id ?? null,
     category: row.category ?? null,
     icon: row.icon ?? null,
+    searchKeywords: row.search_keywords ?? [],
     createdAt: row.created_at,
   }));
 };
@@ -196,6 +235,7 @@ export const registerNewAgent = async ({
   organizationId,
   category,
   icon,
+  searchKeywords,
 }: {
   name: string;
   description: string;
@@ -203,11 +243,12 @@ export const registerNewAgent = async ({
   organizationId?: string | null;
   category?: string | null;
   icon?: string | null;
+  searchKeywords?: string[];
 }) => {
   let query = supabase
     .from("agent_templates")
     .select(
-      "id, name, description, system_prompt, organization_id, category, icon, created_at",
+      "id, name, description, system_prompt, organization_id, category, icon, search_keywords, created_at",
     )
     .eq("name", name)
     .limit(1);
@@ -235,6 +276,7 @@ export const registerNewAgent = async ({
     organizationId,
     category,
     icon,
+    searchKeywords,
   });
 
   return { data: data as AgentTemplateRow | null, created: true, error };

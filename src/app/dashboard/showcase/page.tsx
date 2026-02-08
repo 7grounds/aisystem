@@ -24,6 +24,7 @@ type AgentShowcase = {
   category: string;
   isActive: boolean;
   isAvailable: boolean;
+  searchKeywords: string[];
 };
 
 type ChatMessage = {
@@ -39,6 +40,7 @@ const AGENT_SHOWCASE = [
     description: "Optimiert Schweizer Steuerlast durch saubere Abzüge.",
     roi: "Reduziert steuerliche Reibung durch strukturierte Abzüge, Timing und Einkommensglättung.",
     category: "Finanzen",
+    searchKeywords: ["steuern", "abzug", "optimierung", "steuerlast"],
   },
   {
     id: "inheritance-planner",
@@ -47,6 +49,7 @@ const AGENT_SHOWCASE = [
     description: "Strukturiert Vermögensübergabe und Pflichtanteile.",
     roi: "Minimiert Übergabekosten und rechtliche Risiken durch klare Strukturierung.",
     category: "Recht",
+    searchKeywords: ["erbschaft", "nachlass", "pflichtteil", "erbengemeinschaft"],
   },
   {
     id: "crypto-guardian",
@@ -55,6 +58,7 @@ const AGENT_SHOWCASE = [
     description: "Bewertet Risiko, Verwahrung und Steuerfolgen von Crypto.",
     roi: "Schützt vor Volatilitäts- und Compliance-Fallen durch klare Limits.",
     category: "Technik",
+    searchKeywords: ["crypto", "wallet", "risiko", "volatilität"],
   },
   {
     id: "fee-hunter",
@@ -63,7 +67,14 @@ const AGENT_SHOWCASE = [
     description: "Findet versteckte Gebühren und Rebalancing-Verluste.",
     roi: "Sichert Rendite, indem unnötige Gebührenströme eliminiert werden.",
     category: "Finanzen",
+    searchKeywords: ["gebühren", "fee", "rebalancing", "kosten"],
   },
+];
+
+const PROBLEM_CLOUD = [
+  { label: "Miete zu hoch", query: "miete", category: "Recht" },
+  { label: "ETF-Check", query: "etf", category: "Finanzen" },
+  { label: "Laborwerte verstehen", query: "laborwerte", category: "Medizin" },
 ];
 
 const ShowcasePage = () => {
@@ -75,6 +86,7 @@ const ShowcasePage = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState("Alle");
+  const [activeProblem, setActiveProblem] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -106,6 +118,53 @@ const ShowcasePage = () => {
     }, {});
   }, [templates]);
 
+  const normalizeText = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .replace(/[^a-z0-9\s]/g, " ")
+      .trim();
+
+  const isSubsequence = (query: string, target: string) => {
+    let index = 0;
+    for (const char of target) {
+      if (char === query[index]) {
+        index += 1;
+      }
+      if (index >= query.length) return true;
+    }
+    return false;
+  };
+
+  const levenshtein = (a: string, b: string) => {
+    const matrix = Array.from({ length: a.length + 1 }, () =>
+      new Array(b.length + 1).fill(0),
+    );
+    for (let i = 0; i <= a.length; i += 1) matrix[i][0] = i;
+    for (let j = 0; j <= b.length; j += 1) matrix[0][j] = j;
+    for (let i = 1; i <= a.length; i += 1) {
+      for (let j = 1; j <= b.length; j += 1) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost,
+        );
+      }
+    }
+    return matrix[a.length][b.length];
+  };
+
+  const fuzzyMatch = (query: string, target: string) => {
+    if (!query) return true;
+    if (target.includes(query)) return true;
+    if (query.length >= 3 && isSubsequence(query, target)) return true;
+    const words = target.split(/\s+/g);
+    const threshold = query.length <= 4 ? 1 : 2;
+    return words.some((word) => levenshtein(query, word) <= threshold);
+  };
+
   const galleryAgents = useMemo(() => {
     const results: AgentShowcase[] = [];
     const usedNames = new Set<string>();
@@ -134,6 +193,7 @@ const ShowcasePage = () => {
         category: source?.category ?? agent.category,
         isActive,
         isAvailable,
+        searchKeywords: source?.searchKeywords ?? agent.searchKeywords,
       });
 
       usedNames.add(agent.title);
@@ -150,6 +210,7 @@ const ShowcasePage = () => {
         category: template.category ?? "General",
         isActive: template.organizationId === organization?.id,
         isAvailable: template.organizationId === null,
+        searchKeywords: template.searchKeywords,
       });
     });
 
@@ -157,14 +218,16 @@ const ShowcasePage = () => {
   }, [organization?.id, templateIndex, templates]);
 
   const filteredAgents = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const normalizedSearch = normalizeText(searchTerm);
     return galleryAgents.filter((agent) => {
       const matchesCategory =
         activeCategory === "Alle" || agent.category === activeCategory;
       if (!matchesCategory) return false;
       if (!normalizedSearch) return true;
-      const haystack = `${agent.title} ${agent.description} ${agent.category}`.toLowerCase();
-      return haystack.includes(normalizedSearch);
+      const haystack = normalizeText(
+        `${agent.title} ${agent.description} ${agent.category} ${agent.searchKeywords.join(" ")}`,
+      );
+      return fuzzyMatch(normalizedSearch, haystack);
     });
   }, [activeCategory, galleryAgents, searchTerm]);
 
@@ -215,6 +278,28 @@ const ShowcasePage = () => {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-slate-400">
+          <span>Häufige Probleme:</span>
+          {PROBLEM_CLOUD.map((problem) => (
+            <button
+              key={problem.label}
+              className={`rounded-full px-3 py-2 ${
+                activeProblem === problem.label
+                  ? "bg-emerald-500 text-slate-900"
+                  : "border border-slate-800/80 text-slate-300"
+              }`}
+              type="button"
+              onClick={() => {
+                setActiveProblem(problem.label);
+                setSearchTerm(problem.query);
+                setActiveCategory(problem.category);
+              }}
+            >
+              {problem.label}
+            </button>
+          ))}
         </div>
 
         <div className="mt-6">

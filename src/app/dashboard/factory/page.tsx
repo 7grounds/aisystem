@@ -67,6 +67,14 @@ const FactoryPage = () => {
           "Du bist ein Experte für Schweizer Erbrecht (ZGB). Dein Fokus liegt auf Erbengemeinschaften (§ 602 ZGB). Dein Ziel ist es, neutral zu klären, wie mit gemeinsamem Eigentum umzugehen ist, wenn ein Erbe die Liegenschaft bewohnt. Erkläre Konzepte wie das Einstimmigkeitsprinzip und die Nutzungsentschädigung (fiktive Miete). Frage nach Details: Wird Miete gezahlt? Gibt es eine Nutzungsvereinbarung?",
         category: "Legal",
         icon: "Gavel",
+        searchKeywords: [
+          "erbrecht",
+          "testament",
+          "erbengemeinschaft",
+          "liegenschaft",
+          "nutzungsentschädigung",
+          "einstimmigkeitsprinzip",
+        ],
       });
 
       const { data: medSeeded, created: medCreated } = await registerNewAgent({
@@ -77,6 +85,14 @@ const FactoryPage = () => {
           "Du bist ein Spezialist für die Analyse von medizinischen Laborwerten. Deine Aufgabe ist es, Fachbegriffe in einfache Sprache zu übersetzen. Suche nach Referenzwerten und erkläre, was Abweichungen bedeuten könnten. Beende jede Nachricht mit einem medizinischen Disclaimer.",
         category: "Medizin",
         icon: "Stethoscope",
+        searchKeywords: [
+          "laborwerte",
+          "blutzucker",
+          "blutbild",
+          "referenzwerte",
+          "medizin",
+          "diagnostik",
+        ],
       });
 
       if (!isMounted) return;

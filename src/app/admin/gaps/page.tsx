@@ -21,6 +21,11 @@ type GapEntry = {
   count: number;
 };
 
+type DropoffEntry = {
+  step: string;
+  count: number;
+};
+
 type ChatMessage = {
   role: "system" | "user";
   content: string;
@@ -33,6 +38,7 @@ const AdminGapsPage = () => {
   const [selectedQuery, setSelectedQuery] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
+  const [dropoffs, setDropoffs] = useState<DropoffEntry[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -73,7 +79,40 @@ const AdminGapsPage = () => {
       setIsLoading(false);
     };
 
+    const loadDropoffs = async () => {
+      if (!organization?.id) {
+        setDropoffs([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("user_flows")
+        .select("current_step, status")
+        .eq("organization_id", organization.id)
+        .eq("status", "active");
+
+      if (!isMounted) return;
+      if (error || !data) {
+        setDropoffs([]);
+        return;
+      }
+
+      const counts = data.reduce<Record<string, number>>((acc, row) => {
+        const step = row.current_step?.trim() || "Unbekannt";
+        acc[step] = (acc[step] ?? 0) + 1;
+        return acc;
+      }, {});
+
+      const entries = Object.entries(counts)
+        .map(([step, count]) => ({ step, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8);
+
+      setDropoffs(entries);
+    };
+
     loadGaps();
+    loadDropoffs();
 
     return () => {
       isMounted = false;
@@ -166,6 +205,36 @@ const AdminGapsPage = () => {
                   >
                     Agent jetzt erstellen
                   </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-800/70 bg-slate-950 px-8 py-8 text-slate-100 shadow-[0_20px_55px_rgba(15,23,42,0.4)]">
+        <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-slate-400">
+          <span>Drop-off Analysis</span>
+          <span>User Flows</span>
+        </div>
+        <div className="mt-6">
+          {dropoffs.length === 0 ? (
+            <p className="text-sm text-slate-400">
+              Keine Drop-off Daten verfügbar.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {dropoffs.map((entry) => (
+                <div
+                  key={entry.step}
+                  className="flex items-center justify-between rounded-2xl border border-slate-800/80 bg-slate-900/60 px-4 py-3 text-sm text-slate-200"
+                >
+                  <span className="font-semibold text-slate-100">
+                    {entry.step}
+                  </span>
+                  <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                    {entry.count} Nutzer
+                  </span>
                 </div>
               ))}
             </div>

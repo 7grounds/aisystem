@@ -131,6 +131,23 @@ const FactoryPage = () => {
           ],
         });
 
+      const { data: flowSeeded, created: flowCreated } = await registerNewAgent({
+        name: "Flow-Architekt",
+        description:
+          "Navigator für komplexe Prozesse mit Flow-Steuerung.",
+        systemPrompt:
+          "Du bist der Navigator. Deine Aufgabe ist es, den Nutzer durch komplexe Prozesse zu führen. Wenn der Nutzer vom Thema abweicht, entscheide: A) Zurück zum roten Faden führen oder B) Einen neuen Spezial-Agenten aus der Schauhalle hinzuziehen. Speichere den aktuellen Fortschritt in der user_flows Tabelle.",
+        category: "Infrastruktur",
+        icon: "🧭",
+        searchKeywords: [
+          "flow",
+          "navigation",
+          "prozess",
+          "fortschritt",
+          "drop-off",
+        ],
+      });
+
       if (!isMounted) return;
       if (created && seeded) {
         const newTemplate = instantiateTemplates([seeded])[0];
@@ -155,6 +172,13 @@ const FactoryPage = () => {
 
       if (validatorCreated && validatorSeeded) {
         const newTemplate = instantiateTemplates([validatorSeeded])[0];
+        if (newTemplate) {
+          setTemplates((prev) => [newTemplate, ...prev]);
+        }
+      }
+
+      if (flowCreated && flowSeeded) {
+        const newTemplate = instantiateTemplates([flowSeeded])[0];
         if (newTemplate) {
           setTemplates((prev) => [newTemplate, ...prev]);
         }

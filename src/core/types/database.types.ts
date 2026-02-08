@@ -99,6 +99,36 @@ export interface Database {
         };
         Relationships: [];
       };
+      user_flows: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          organization_id: string | null;
+          domain: string;
+          current_step: string | null;
+          status: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          organization_id?: string | null;
+          domain: string;
+          current_step?: string | null;
+          status?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          organization_id?: string | null;
+          domain?: string;
+          current_step?: string | null;
+          status?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
       organizations: {
         Row: {
           id: string;

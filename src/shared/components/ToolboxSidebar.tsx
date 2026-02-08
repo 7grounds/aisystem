@@ -2,9 +2,10 @@
  * @MODULE_ID shared.components.toolbox-sidebar
  * @STAGE global
  * @DATA_INPUTS ["tools"]
- * @REQUIRED_TOOLS ["YuhConnector"]
+ * @REQUIRED_TOOLS ["YuhConnector", "BoardroomLink"]
  */
 import { YuhConnector } from "@/shared/tools/YuhConnector";
+import { BoardroomLink } from "@/shared/components/BoardroomLink";
 
 export const ToolboxSidebar = () => {
   const tools = [
@@ -55,6 +56,9 @@ export const ToolboxSidebar = () => {
             <div className="mt-4">{tool.action}</div>
           </div>
         ))}
+      </div>
+      <div className="pt-2">
+        <BoardroomLink />
       </div>
     </aside>
   );

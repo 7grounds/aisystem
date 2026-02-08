@@ -95,6 +95,42 @@ const FactoryPage = () => {
         ],
       });
 
+      const { data: optimizerSeeded, created: optimizerCreated } =
+        await registerNewAgent({
+          name: "Logic-Optimizer",
+          description:
+            "Optimiert Prompts für Token-Effizienz und Präzision.",
+          systemPrompt:
+            "Du bist der Logic-Optimizer. Deine Aufgabe ist es, Prompts auf maximale Token-Effizienz und Präzision zu trimmen. Entferne Redundanzen, behalte kritische Anforderungen, und liefere eine knappe, klare Optimierung.",
+          category: "Infrastruktur",
+          icon: "🛠️",
+          searchKeywords: [
+            "prompt",
+            "token",
+            "optimierung",
+            "effizienz",
+            "präzision",
+          ],
+        });
+
+      const { data: validatorSeeded, created: validatorCreated } =
+        await registerNewAgent({
+          name: "Data-Validator",
+          description:
+            "Validiert Payload-Strukturen und erstellt Fehlerberichte.",
+          systemPrompt:
+            "Du bist der Data-Validator. Du nutzt ein Tool, um payload-Strukturen in der Datenbank zu scannen und Fehlerberichte für den Manager zu erstellen. Prüfe auf fehlende Felder, falsche Typen, inkonsistente Werte und liefere klare, priorisierte Findings.",
+          category: "Infrastruktur",
+          icon: "🛡️",
+          searchKeywords: [
+            "payload",
+            "validierung",
+            "fehler",
+            "struktur",
+            "datenqualität",
+          ],
+        });
+
       if (!isMounted) return;
       if (created && seeded) {
         const newTemplate = instantiateTemplates([seeded])[0];
@@ -105,6 +141,20 @@ const FactoryPage = () => {
 
       if (medCreated && medSeeded) {
         const newTemplate = instantiateTemplates([medSeeded])[0];
+        if (newTemplate) {
+          setTemplates((prev) => [newTemplate, ...prev]);
+        }
+      }
+
+      if (optimizerCreated && optimizerSeeded) {
+        const newTemplate = instantiateTemplates([optimizerSeeded])[0];
+        if (newTemplate) {
+          setTemplates((prev) => [newTemplate, ...prev]);
+        }
+      }
+
+      if (validatorCreated && validatorSeeded) {
+        const newTemplate = instantiateTemplates([validatorSeeded])[0];
         if (newTemplate) {
           setTemplates((prev) => [newTemplate, ...prev]);
         }

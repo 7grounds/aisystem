@@ -108,6 +108,31 @@ const AdminGapsPage = () => {
 
   return (
     <div className="space-y-8">
+      <section className="rounded-3xl border border-slate-800/70 bg-slate-950 px-8 py-6 text-slate-100 shadow-[0_20px_55px_rgba(15,23,42,0.4)]">
+        <div className="flex flex-wrap items-center justify-between gap-4 text-xs uppercase tracking-[0.3em] text-slate-400">
+          <span>Health Dashboard</span>
+          <span>Systemstatus</span>
+        </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-slate-800/80 bg-slate-900/60 px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+              System-Stabilität
+            </p>
+            <p className="mt-2 text-lg font-semibold text-emerald-300">
+              99.9%
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-800/80 bg-slate-900/60 px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+              Durchschnittliche Latenz
+            </p>
+            <p className="mt-2 text-lg font-semibold text-emerald-300">
+              1.2s
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section className="rounded-3xl border border-slate-800/70 bg-slate-950 px-8 py-8 text-slate-100 shadow-[0_20px_55px_rgba(15,23,42,0.4)]">
         <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-slate-400">
           <span>Gap Analysis</span>

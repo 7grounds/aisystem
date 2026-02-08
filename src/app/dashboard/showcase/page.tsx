@@ -89,6 +89,7 @@ const ShowcasePage = () => {
   const [activeCategory, setActiveCategory] = useState("Alle");
   const [activeProblem, setActiveProblem] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -117,6 +118,7 @@ const ShowcasePage = () => {
       const { data } = await supabase.auth.getUser();
       if (!isMounted) return;
       setUserId(data.user?.id ?? null);
+      setUserEmail(data.user?.email ?? null);
     };
 
     resolveUser();
@@ -238,6 +240,9 @@ const ShowcasePage = () => {
   const filteredAgents = useMemo(() => {
     const normalizedSearch = normalizeText(searchTerm);
     return galleryAgents.filter((agent) => {
+      if (agent.category === "Infrastruktur" && userEmail !== "test@zasterix.ch") {
+        return false;
+      }
       const matchesCategory =
         activeCategory === "Alle" || agent.category === activeCategory;
       if (!matchesCategory) return false;
@@ -247,7 +252,7 @@ const ShowcasePage = () => {
       );
       return fuzzyMatch(normalizedSearch, haystack);
     });
-  }, [activeCategory, galleryAgents, searchTerm]);
+  }, [activeCategory, galleryAgents, searchTerm, userEmail]);
 
   useEffect(() => {
     let timeoutId: number | null = null;
@@ -305,7 +310,13 @@ const ShowcasePage = () => {
             onChange={(event) => setSearchTerm(event.target.value)}
           />
           <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-slate-400">
-            {["Alle", "Finanzen", "Recht", "Medizin"].map((category) => (
+            {[
+              "Alle",
+              "Finanzen",
+              "Recht",
+              "Medizin",
+              ...(userEmail === "test@zasterix.ch" ? ["Infrastruktur"] : []),
+            ].map((category) => (
               <button
                 key={category}
                 className={`rounded-full px-3 py-2 ${

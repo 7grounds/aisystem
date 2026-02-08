@@ -14,7 +14,8 @@ import { updateTaskProgress } from "@/core/progress";
 import { Card } from "@/shared/components/Card";
 import { Button } from "@/shared/components/Button";
 import { YuhConnector } from "@/shared/tools/YuhConnector";
-import { generateSwissWealthAnalysis } from "./ai-logic";
+import { generateAssetCoachPrompt, generateSwissWealthAnalysis } from "./ai-logic";
+import { lookupAsset, isLikelyIsin, type AssetProfile } from "@/shared/tools/IsinAnalyzer";
 
 type TaskRendererProps = {
   moduleId: string;
@@ -40,11 +41,18 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [analysisSeed, setAnalysisSeed] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const [assetLookupState, setAssetLookupState] = useState<{
+    status: "idle" | "loading" | "found" | "not-found";
+    asset: AssetProfile | null;
+  }>({ status: "idle", asset: null });
+  const [aiPrompt, setAiPrompt] = useState<string | null>(null);
+  const [hardContext, setHardContext] = useState<string | null>(null);
 
   const { setTotalTasks, setCompletedTasks } = useProgressStore();
   const completedCount = useMemo(() => {
     return Object.values(completedTasks).filter(Boolean).length;
   }, [completedTasks]);
+  const assetInput = inputValues[INPUT_TASK_ID] ?? "";
 
   useEffect(() => {
     setTotalTasks(tasks.length);
@@ -54,6 +62,57 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
     setCompletedTasks(completedCount);
   }, [completedCount, setCompletedTasks]);
 
+  useEffect(() => {
+    let isActive = true;
+    const input = assetInput.trim();
+
+    if (!input) {
+      setAssetLookupState({ status: "idle", asset: null });
+      return () => {
+        isActive = false;
+      };
+    }
+
+    setAssetLookupState({ status: "loading", asset: null });
+
+    lookupAsset(input).then((asset) => {
+      if (!isActive) return;
+      setAssetLookupState({
+        status: asset ? "found" : "not-found",
+        asset: asset ?? null,
+      });
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [assetInput]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const buildPrompt = async () => {
+      if (!assetInput.trim()) {
+        setAiPrompt(null);
+        setHardContext(null);
+        return;
+      }
+      const result = await generateAssetCoachPrompt(
+        assetInput,
+        tasks.find((task) => task.type === "ai-coach")?.prompt,
+        assetLookupState.asset,
+      );
+      if (!isActive) return;
+      setAiPrompt(result.prompt);
+      setHardContext(result.hardContext);
+    };
+
+    buildPrompt();
+
+    return () => {
+      isActive = false;
+    };
+  }, [assetInput, assetLookupState.asset, tasks]);
   useEffect(() => {
     let isMounted = true;
 
@@ -76,7 +135,6 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
 
   const currentTask = tasks[currentIndex];
   const isLastStep = currentIndex === tasks.length - 1;
-  const assetInput = inputValues[INPUT_TASK_ID] ?? "";
 
   const analysis = useMemo(() => {
     return generateSwissWealthAnalysis(assetInput);
@@ -178,6 +236,26 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
                 type="text"
                 value={inputValues[currentTask.id] ?? ""}
               />
+              {currentTask.id === INPUT_TASK_ID ? (
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="uppercase tracking-[0.22em] text-slate-400">
+                    Validate
+                  </span>
+                  {assetLookupState.status === "loading" ? (
+                    <span className="text-slate-400">Checking ISIN...</span>
+                  ) : null}
+                  {assetLookupState.status === "found" &&
+                  assetLookupState.asset ? (
+                    <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-emerald-400">
+                      Found: {assetLookupState.asset.name}
+                    </span>
+                  ) : null}
+                  {assetLookupState.status === "not-found" &&
+                  isLikelyIsin(assetInput) ? (
+                    <span className="text-rose-400">No match found</span>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -186,6 +264,11 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
               <p className="text-xs uppercase tracking-[0.26em] text-emerald-400">
                 AI-Generated Assessment
               </p>
+              {hardContext ? (
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                  {hardContext}
+                </p>
+              ) : null}
               <div className="space-y-4 text-sm">
                 {renderParagraphs(analysis)}
               </div>
@@ -201,9 +284,9 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
                   Prompted by Swiss wealth standards
                 </span>
               </div>
-              {currentTask.prompt ? (
+              {aiPrompt ?? currentTask.prompt ? (
                 <p className="text-xs leading-relaxed text-slate-400">
-                  Prompt: {currentTask.prompt}
+                  Prompt: {aiPrompt ?? currentTask.prompt}
                 </p>
               ) : null}
             </div>

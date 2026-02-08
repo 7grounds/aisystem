@@ -15,6 +15,7 @@ import {
   type AgentTemplate,
 } from "@/core/agent-factory";
 import { useTenant } from "@/core/tenant-context";
+import { supabase } from "@/core/supabase";
 
 type ChatMessage = {
   role: "system" | "user";
@@ -32,9 +33,19 @@ const FactoryPage = () => {
   const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const { organization } = useTenant();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState("Alle");
+
+  const isAdmin = userEmail === "test@zasterix.ch";
 
   useEffect(() => {
     let isMounted = true;
+
+    const loadUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!isMounted) return;
+      setUserEmail(data.user?.email ?? null);
+    };
 
     const loadTemplates = async () => {
       setIsLoading(true);
@@ -58,6 +69,16 @@ const FactoryPage = () => {
         icon: "Gavel",
       });
 
+      const { data: medSeeded, created: medCreated } = await registerNewAgent({
+        name: "Med-Interpret",
+        description:
+          "Spezialist für die Analyse von medizinischen Laborwerten.",
+        systemPrompt:
+          "Du bist ein Spezialist für die Analyse von medizinischen Laborwerten. Deine Aufgabe ist es, Fachbegriffe in einfache Sprache zu übersetzen. Suche nach Referenzwerten und erkläre, was Abweichungen bedeuten könnten. Beende jede Nachricht mit einem medizinischen Disclaimer.",
+        category: "Medizin",
+        icon: "Stethoscope",
+      });
+
       if (!isMounted) return;
       if (created && seeded) {
         const newTemplate = instantiateTemplates([seeded])[0];
@@ -65,8 +86,16 @@ const FactoryPage = () => {
           setTemplates((prev) => [newTemplate, ...prev]);
         }
       }
+
+      if (medCreated && medSeeded) {
+        const newTemplate = instantiateTemplates([medSeeded])[0];
+        if (newTemplate) {
+          setTemplates((prev) => [newTemplate, ...prev]);
+        }
+      }
     };
 
+    loadUser();
     loadTemplates();
 
     return () => {
@@ -128,6 +157,19 @@ const FactoryPage = () => {
     setChatInput("");
   };
 
+  const categoryOptions = ["Alle", "Legal", "Medizin", "Finanzen"];
+  const filteredTemplates =
+    categoryFilter === "Alle"
+      ? templates
+      : templates.filter((template) => {
+          if (categoryFilter === "Finanzen") {
+            return (
+              template.category === "Finanzen" || template.category === "General"
+            );
+          }
+          return template.category === categoryFilter;
+        });
+
   return (
     <div className="space-y-8">
       <section className="rounded-3xl border border-slate-800/70 bg-slate-950 px-8 py-8 text-slate-100 shadow-[0_20px_55px_rgba(15,23,42,0.4)]">
@@ -172,8 +214,28 @@ const FactoryPage = () => {
               Keine Agenten-Templates vorhanden.
             </p>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {templates.map((template) => (
+            <div className="space-y-4">
+              {isAdmin ? (
+                <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-400">
+                  <span>Filter:</span>
+                  {categoryOptions.map((option) => (
+                    <button
+                      key={option}
+                      className={`rounded-full px-3 py-2 ${
+                        categoryFilter === option
+                          ? "bg-emerald-500 text-slate-900"
+                          : "border border-slate-700 text-slate-300"
+                      }`}
+                      type="button"
+                      onClick={() => setCategoryFilter(option)}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <div className="grid gap-4 md:grid-cols-2">
+                {filteredTemplates.map((template) => (
                 <div
                   key={template.id}
                   className="flex h-full flex-col justify-between rounded-2xl border border-slate-800/80 bg-slate-900/60 px-4 py-4 text-sm text-slate-200"
@@ -186,6 +248,11 @@ const FactoryPage = () => {
                     <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                       {template.description}
                     </p>
+                    {template.category ? (
+                      <p className="text-[10px] uppercase tracking-[0.24em] text-emerald-300">
+                        {template.category}
+                      </p>
+                    ) : null}
                   </div>
                   <button
                     className="mt-4 rounded-full border border-emerald-400/40 px-4 py-2 text-xs uppercase tracking-[0.24em] text-emerald-200 hover:border-emerald-300"
@@ -196,6 +263,7 @@ const FactoryPage = () => {
                   </button>
                 </div>
               ))}
+              </div>
             </div>
           )}
         </div>

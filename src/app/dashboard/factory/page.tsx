@@ -166,6 +166,24 @@ const FactoryPage = () => {
           ],
         });
 
+      const { data: devopsSeeded, created: devopsCreated } =
+        await registerNewAgent({
+          name: "Dev-Ops Bot",
+          description:
+            "Technischer Architekt für Code, Migrationen und API-Schnittstellen.",
+          systemPrompt:
+            "Du bist der technische Architekt der Zasterix-Plattform. Deine Aufgabe ist es, den Code der App zu verstehen, SQL-Migrationen vorzubereiten und API-Schnittstellen zwischen Agenten zu definieren. Dein Fokus liegt auf sauberem, skalierbarem Code und maximaler System-Performance.",
+          category: "Infrastruktur",
+          icon: "🧰",
+          searchKeywords: [
+            "devops",
+            "sql",
+            "migration",
+            "api",
+            "performance",
+          ],
+        });
+
       if (!isMounted) return;
       if (created && seeded) {
         const newTemplate = instantiateTemplates([seeded])[0];
@@ -204,6 +222,13 @@ const FactoryPage = () => {
 
       if (coordinatorCreated && coordinatorSeeded) {
         const newTemplate = instantiateTemplates([coordinatorSeeded])[0];
+        if (newTemplate) {
+          setTemplates((prev) => [newTemplate, ...prev]);
+        }
+      }
+
+      if (devopsCreated && devopsSeeded) {
+        const newTemplate = instantiateTemplates([devopsSeeded])[0];
         if (newTemplate) {
           setTemplates((prev) => [newTemplate, ...prev]);
         }

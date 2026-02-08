@@ -25,6 +25,13 @@ export type SpecialistConsultation = {
   timestamp: string;
 };
 
+export type TechnicalTaskDispatch = {
+  taskId: string;
+  coordinatorId: string | null;
+  task: string;
+  createdAt: string;
+};
+
 type AgentTemplateRow =
   Database["public"]["Tables"]["agent_templates"]["Row"];
 
@@ -319,6 +326,49 @@ export const consultSpecialistAgent = async (
       response,
       timestamp: new Date().toISOString(),
     } as SpecialistConsultation,
+    error: null,
+  };
+};
+
+export const dispatchTechnicalTask = async ({
+  coordinatorId,
+  userId,
+  organizationId,
+  task,
+}: {
+  coordinatorId?: string | null;
+  userId: string;
+  organizationId: string | null;
+  task: string;
+}) => {
+  const payload = {
+    type: "dev_task",
+    coordinator_id: coordinatorId ?? null,
+    task,
+  };
+
+  const { data, error } = await supabase
+    .from("universal_history")
+    .insert({
+      user_id: userId,
+      organization_id: organizationId,
+      payload,
+      created_at: new Date().toISOString(),
+    })
+    .select("id, created_at")
+    .single();
+
+  if (error || !data) {
+    return { data: null, error };
+  }
+
+  return {
+    data: {
+      taskId: data.id,
+      coordinatorId: coordinatorId ?? null,
+      task,
+      createdAt: data.created_at ?? new Date().toISOString(),
+    } as TechnicalTaskDispatch,
     error: null,
   };
 };

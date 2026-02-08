@@ -36,6 +36,30 @@ export interface Database {
         };
         Relationships: [];
       };
+      agent_templates: {
+        Row: {
+          id: string;
+          name: string;
+          description: string;
+          system_prompt: string;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description: string;
+          system_prompt: string;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string;
+          system_prompt?: string;
+          created_at?: string | null;
+        };
+        Relationships: [];
+      };
       organizations: {
         Row: {
           id: string;

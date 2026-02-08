@@ -18,6 +18,17 @@ export type AgentInstance = {
   status: string | null;
 };
 
+type AgentTemplateRow =
+  Database["public"]["Tables"]["agent_templates"]["Row"];
+
+export type AgentTemplate = {
+  id: string;
+  name: string;
+  description: string;
+  systemPrompt: string;
+  createdAt: string | null;
+};
+
 export const fetchAgentDefinitions = async () => {
   const { data, error } = await supabase
     .from("agent_definitions")
@@ -30,12 +41,33 @@ export const fetchAgentDefinitions = async () => {
   };
 };
 
+export const fetchAgentTemplates = async () => {
+  const { data, error } = await supabase
+    .from("agent_templates")
+    .select("id, name, description, system_prompt, created_at")
+    .order("created_at", { ascending: false });
+
+  return {
+    data: (data ?? []) as AgentTemplateRow[],
+    error,
+  };
+};
+
 const defaultSystemPrompt = (task: string) => {
   return [
     "You are a specialist AI agent within Zasterix.",
     `Primary task: ${task}.`,
     "Work in a Swiss wealth engineering tone and focus on precision, compliance, and actionability.",
     "If data is missing, ask for it succinctly before proceeding.",
+  ].join("\n");
+};
+
+const defaultTemplatePrompt = (task: string) => {
+  return [
+    "You are a specialized financial AI built for Zasterix.",
+    `Mission: ${task}.`,
+    "Operate in a Swiss wealth engineering tone with compliance and precision.",
+    "If critical data is missing, ask for it before making recommendations.",
   ].join("\n");
 };
 
@@ -73,6 +105,39 @@ export const createAgentDefinition = async ({
   };
 };
 
+export const createSpecialistAgent = async ({
+  task,
+  name,
+  description,
+  systemPrompt,
+}: {
+  task: string;
+  name?: string;
+  description?: string;
+  systemPrompt?: string;
+}) => {
+  const trimmedTask = task.trim();
+  const agentName = name?.trim() || trimmedTask || "Specialist Agent";
+  const agentDescription =
+    description?.trim() || `Spezial-Agent für ${trimmedTask || "Sonderfälle"}.`;
+  const prompt = systemPrompt?.trim() || defaultTemplatePrompt(trimmedTask);
+
+  const { data, error } = await supabase
+    .from("agent_templates")
+    .insert({
+      name: agentName,
+      description: agentDescription,
+      system_prompt: prompt,
+    })
+    .select("id, name, description, system_prompt, created_at")
+    .single();
+
+  return {
+    data: data as AgentTemplateRow | null,
+    error,
+  };
+};
+
 export const instantiateAgents = (rows: AgentDefinitionRow[]): AgentInstance[] => {
   return rows.map((row) => ({
     id: row.id,
@@ -80,5 +145,17 @@ export const instantiateAgents = (rows: AgentDefinitionRow[]): AgentInstance[] =
     systemPrompt: row.system_prompt,
     icon: row.icon,
     status: row.status,
+  }));
+};
+
+export const instantiateTemplates = (
+  rows: AgentTemplateRow[],
+): AgentTemplate[] => {
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    systemPrompt: row.system_prompt,
+    createdAt: row.created_at,
   }));
 };

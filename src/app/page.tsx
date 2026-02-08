@@ -1,28 +1,77 @@
 /**
  * @MODULE_ID app.home
  * @STAGE stage-1
- * @DATA_INPUTS ["useUserProgress", "assetCoachTasks", "assetIdentificationTasks"]
- * @REQUIRED_TOOLS ["YuhConnector", "getButtonClasses", "useUserProgress"]
+ * @DATA_INPUTS ["getLatestProgress", "assetCoachTasks", "assetIdentificationTasks"]
+ * @REQUIRED_TOOLS ["YuhConnector", "getButtonClasses", "getLatestProgress", "supabase"]
  */
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getButtonClasses } from "@/shared/components/Button";
 import { YuhConnector } from "@/shared/tools/YuhConnector";
-import { useUserProgress } from "@/core/hooks";
+import { getLatestProgress } from "@/core/progress";
+import { supabase, isSupabaseConfigured } from "@/core/supabase";
 import { assetCoachTasks } from "@/features/stage-1/asset-coach/tasks.config";
 import { assetIdentificationTasks } from "@/features/stage-1/asset-identification/tasks.config";
 
 export default function Home() {
   const defaultStage = "stage-1";
   const defaultModule = "asset-coach";
-  const nextModule = "asset-identification";
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastSync, setLastSync] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{
+    stageId: string | null;
+    moduleId: string | null;
+    completedTasks: string[];
+  }>({
+    stageId: null,
+    moduleId: null,
+    completedTasks: [],
+  });
 
-  const { currentStage, currentModule, completedTasks, lastSync, isLoading } =
-    useUserProgress();
+  useEffect(() => {
+    let isMounted = true;
 
-  const stageId = currentStage ?? defaultStage;
-  const moduleId = currentModule ?? defaultModule;
+    const fetchProgress = async () => {
+      if (!isSupabaseConfigured) {
+        if (!isMounted) return;
+        setIsLoading(false);
+        setLastSync(new Date().toISOString());
+        return;
+      }
+
+      const { data, error } = await supabase.auth.getUser();
+      if (!isMounted) return;
+
+      if (error || !data.user) {
+        setProgress({ stageId: null, moduleId: null, completedTasks: [] });
+        setIsLoading(false);
+        setLastSync(new Date().toISOString());
+        return;
+      }
+
+      const latest = await getLatestProgress(data.user.id);
+      if (!isMounted) return;
+
+      setProgress({
+        stageId: latest.stageId,
+        moduleId: latest.moduleId,
+        completedTasks: latest.completedTasks ?? [],
+      });
+      setIsLoading(false);
+      setLastSync(new Date().toISOString());
+    };
+
+    fetchProgress();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const stageId = progress.stageId ?? defaultStage;
+  const moduleId = progress.moduleId ?? defaultModule;
   const moduleKey = `${stageId}/${moduleId}`;
   const defaultKey = `${defaultStage}/${defaultModule}`;
 
@@ -45,26 +94,23 @@ export default function Home() {
       title: "Stage 1: Asset Identification",
       description:
         "Map the full asset inventory to provide the AI coach with a precise wealth baseline.",
-      accent: "Next Module",
+      accent: "Active Module",
     },
   };
 
   const activeTasks = taskRegistry[moduleKey] ?? taskRegistry[defaultKey];
   const totalTasks = activeTasks?.length ?? 0;
-  const completedCount = Math.min(completedTasks.length, totalTasks);
-  const progressPercent = totalTasks
-    ? Math.round((completedCount / totalTasks) * 100)
-    : 0;
+  const completedCount = Math.min(progress.completedTasks.length, totalTasks);
+  const progressPercent = useMemo(() => {
+    if (!totalTasks) return 0;
+    return Math.round((completedCount / totalTasks) * 100);
+  }, [completedCount, totalTasks]);
 
-  const isNewUser = !currentStage || !currentModule;
-  const isModuleCompleted = !isNewUser && completedCount >= totalTasks;
+  const hasProgress = Boolean(progress.stageId && progress.moduleId);
+  const isModuleCompleted = hasProgress && completedCount >= totalTasks;
 
   const activeMeta = moduleMeta[moduleKey] ?? moduleMeta[defaultKey];
-  const primaryLabel = isNewUser
-    ? "Start Journey"
-    : isModuleCompleted
-      ? "Next Module"
-      : "Continue Engineering";
+  const primaryLabel = hasProgress ? "Continue" : "Start";
 
   const buildModuleRoute = (stage: string, module: string) => {
     const normalizedStage = stage.startsWith("stage-")
@@ -73,9 +119,9 @@ export default function Home() {
     return `/${normalizedStage}/${module}`;
   };
 
-  const primaryHref = isModuleCompleted
-    ? buildModuleRoute(defaultStage, nextModule)
-    : buildModuleRoute(stageId, moduleId);
+  const primaryHref = hasProgress
+    ? buildModuleRoute(stageId, moduleId)
+    : buildModuleRoute(defaultStage, defaultModule);
 
   const lastSyncLabel = lastSync
     ? new Date(lastSync).toLocaleTimeString("en-GB", {
@@ -103,11 +149,6 @@ export default function Home() {
             <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
               {activeMeta.description}
             </p>
-            {isModuleCompleted ? (
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
-                Next Module: Stage 1 / Asset Identification
-              </p>
-            ) : null}
           </div>
           <div className="pt-2">
             <Link
@@ -128,7 +169,7 @@ export default function Home() {
         <div className="mt-4 space-y-3">
           <div className="flex items-center justify-between text-sm text-slate-100">
             <span className="font-medium text-emerald-400">
-              {isLoading ? "Syncing..." : `${progressPercent}% Completed`}
+              {isLoading ? "Syncing..." : `Progress: ${progressPercent}%`}
             </span>
             <span className="text-xs uppercase tracking-[0.2em] text-slate-300">
               {completedCount} / {totalTasks} Tasks

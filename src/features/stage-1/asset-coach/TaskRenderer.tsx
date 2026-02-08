@@ -2,13 +2,14 @@
  * @MODULE_ID stage-1.asset-coach.task-renderer
  * @STAGE stage-1
  * @DATA_INPUTS ["tasks", "assetInput", "progressState"]
- * @REQUIRED_TOOLS ["useProgressStore", "YuhConnector"]
+ * @REQUIRED_TOOLS ["useProgressStore", "YuhConnector", "supabase"]
  */
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import type { TaskDefinition } from "@/shared/tools/taskSchema";
 import { useProgressStore } from "@/core/store";
+import { supabase } from "@/core/supabase";
 import { Card } from "@/shared/components/Card";
 import { Button } from "@/shared/components/Button";
 import { YuhConnector } from "@/shared/tools/YuhConnector";
@@ -30,6 +31,35 @@ const renderParagraphs = (content: string) => {
   ));
 };
 
+type UpdateProgressParams = {
+  userId: string;
+  stageId: string;
+  moduleId: string;
+  completedTasks: string[];
+};
+
+const updateProgress = async ({
+  userId,
+  stageId,
+  moduleId,
+  completedTasks,
+}: UpdateProgressParams) => {
+  const uniqueTasks = Array.from(new Set(completedTasks));
+
+  return supabase.from("user_progress").upsert(
+    {
+      user_id: userId,
+      stage_id: stageId,
+      module_id: moduleId,
+      completed_tasks: uniqueTasks,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      onConflict: "user_id,stage_id,module_id",
+    },
+  );
+};
+
 export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [completedTasks, setCompletedTasksLocal] = useState<
@@ -37,6 +67,7 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
   >({});
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [analysisSeed, setAnalysisSeed] = useState(0);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const { setTotalTasks, setCompletedTasks } = useProgressStore();
   const completedCount = useMemo(() => {
@@ -51,6 +82,26 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
     setCompletedTasks(completedCount);
   }, [completedCount, setCompletedTasks]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const resolveUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (!isMounted) return;
+      if (error || !data.user) {
+        setUserId(null);
+        return;
+      }
+      setUserId(data.user.id);
+    };
+
+    resolveUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const currentTask = tasks[currentIndex];
   const isLastStep = currentIndex === tasks.length - 1;
   const assetInput = inputValues[INPUT_TASK_ID] ?? "";
@@ -61,10 +112,23 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
 
   const handleNext = () => {
     if (!currentTask) return;
-    setCompletedTasksLocal((prev) => ({
-      ...prev,
+    const updatedCompleted = {
+      ...completedTasks,
       [currentTask.id]: true,
-    }));
+    };
+    setCompletedTasksLocal(updatedCompleted);
+
+    if (userId) {
+      const completedTaskIds = Object.keys(updatedCompleted).filter(
+        (taskId) => updatedCompleted[taskId],
+      );
+      updateProgress({
+        userId,
+        stageId,
+        moduleId,
+        completedTasks: completedTaskIds,
+      });
+    }
 
     if (!isLastStep) {
       setCurrentIndex((prev) => Math.min(tasks.length - 1, prev + 1));

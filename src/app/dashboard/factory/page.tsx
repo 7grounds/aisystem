@@ -11,6 +11,7 @@ import {
   createSpecialistAgent,
   fetchAgentTemplates,
   instantiateTemplates,
+  registerNewAgent,
   type AgentTemplate,
 } from "@/core/agent-factory";
 import { useTenant } from "@/core/tenant-context";
@@ -46,6 +47,24 @@ const FactoryPage = () => {
       }
       setTemplates(instantiateTemplates(data));
       setIsLoading(false);
+
+      const { data: seeded, created } = await registerNewAgent({
+        name: "Erbrecht-Expert CH",
+        description:
+          "Spezialist für Schweizer Erbengemeinschaften und Liegenschaften.",
+        systemPrompt:
+          "Du bist ein Experte für Schweizer Erbrecht (ZGB). Dein Fokus liegt auf Erbengemeinschaften (§ 602 ZGB). Dein Ziel ist es, neutral zu klären, wie mit gemeinsamem Eigentum umzugehen ist, wenn ein Erbe die Liegenschaft bewohnt. Erkläre Konzepte wie das Einstimmigkeitsprinzip und die Nutzungsentschädigung (fiktive Miete). Frage nach Details: Wird Miete gezahlt? Gibt es eine Nutzungsvereinbarung?",
+        category: "Legal",
+        icon: "Gavel",
+      });
+
+      if (!isMounted) return;
+      if (created && seeded) {
+        const newTemplate = instantiateTemplates([seeded])[0];
+        if (newTemplate) {
+          setTemplates((prev) => [newTemplate, ...prev]);
+        }
+      }
     };
 
     loadTemplates();
@@ -161,6 +180,7 @@ const FactoryPage = () => {
                 >
                   <div className="space-y-2">
                     <h3 className="text-lg font-semibold text-slate-100">
+                      {template.icon ? `${template.icon} ` : ""}
                       {template.name}
                     </h3>
                     <p className="text-xs uppercase tracking-[0.2em] text-slate-400">

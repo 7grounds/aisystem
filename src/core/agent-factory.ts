@@ -28,6 +28,7 @@ export type AgentTemplate = {
   systemPrompt: string;
   organizationId: string | null;
   category: string | null;
+  icon: string | null;
   createdAt: string | null;
 };
 
@@ -49,7 +50,7 @@ export const fetchAgentTemplates = async (
   let query = supabase
     .from("agent_templates")
     .select(
-      "id, name, description, system_prompt, organization_id, category, created_at",
+      "id, name, description, system_prompt, organization_id, category, icon, created_at",
     )
     .order("created_at", { ascending: false });
 
@@ -126,6 +127,7 @@ export const createSpecialistAgent = async ({
   systemPrompt,
   organizationId,
   category,
+  icon,
 }: {
   task: string;
   name?: string;
@@ -133,6 +135,7 @@ export const createSpecialistAgent = async ({
   systemPrompt?: string;
   organizationId?: string | null;
   category?: string | null;
+  icon?: string | null;
 }) => {
   const trimmedTask = task.trim();
   const agentName = name?.trim() || trimmedTask || "Specialist Agent";
@@ -148,9 +151,10 @@ export const createSpecialistAgent = async ({
       system_prompt: prompt,
       organization_id: organizationId ?? null,
       category: category ?? "General",
+      icon: icon ?? "🧠",
     })
     .select(
-      "id, name, description, system_prompt, organization_id, category, created_at",
+      "id, name, description, system_prompt, organization_id, category, icon, created_at",
     )
     .single();
 
@@ -180,6 +184,58 @@ export const instantiateTemplates = (
     systemPrompt: row.system_prompt,
     organizationId: row.organization_id ?? null,
     category: row.category ?? null,
+    icon: row.icon ?? null,
     createdAt: row.created_at,
   }));
+};
+
+export const registerNewAgent = async ({
+  name,
+  description,
+  systemPrompt,
+  organizationId,
+  category,
+  icon,
+}: {
+  name: string;
+  description: string;
+  systemPrompt: string;
+  organizationId?: string | null;
+  category?: string | null;
+  icon?: string | null;
+}) => {
+  let query = supabase
+    .from("agent_templates")
+    .select(
+      "id, name, description, system_prompt, organization_id, category, icon, created_at",
+    )
+    .eq("name", name)
+    .limit(1);
+
+  if (organizationId) {
+    query = query.eq("organization_id", organizationId);
+  } else {
+    query = query.is("organization_id", null);
+  }
+
+  const { data: existing, error: existingError } = await query.maybeSingle();
+  if (existingError) {
+    return { data: null, created: false, error: existingError };
+  }
+
+  if (existing) {
+    return { data: existing as AgentTemplateRow, created: false, error: null };
+  }
+
+  const { data, error } = await createSpecialistAgent({
+    task: name,
+    name,
+    description,
+    systemPrompt,
+    organizationId,
+    category,
+    icon,
+  });
+
+  return { data: data as AgentTemplateRow | null, created: true, error };
 };

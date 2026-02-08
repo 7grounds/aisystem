@@ -2,11 +2,12 @@
  * @MODULE_ID app.root-layout
  * @STAGE global
  * @DATA_INPUTS ["children"]
- * @REQUIRED_TOOLS ["AppShell"]
+ * @REQUIRED_TOOLS ["AppShell", "TenantProvider"]
  */
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/shared/components/AppShell";
+import { TenantProvider } from "@/core/tenant-context";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -35,7 +36,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AppShell>{children}</AppShell>
+        <AppShell>
+          <TenantProvider>{children}</TenantProvider>
+        </AppShell>
       </body>
     </html>
   );

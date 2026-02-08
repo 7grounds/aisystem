@@ -67,3 +67,7 @@ export const updateTaskProgress = async (
     },
   );
 };
+
+export const resetAllProgress = async (userId: string) => {
+  return supabase.from("user_progress").delete().eq("user_id", userId);
+};

@@ -1,8 +1,8 @@
 /**
  * @MODULE_ID app.home
  * @STAGE stage-1
- * @DATA_INPUTS ["fetchUserProgress", "assetCoachTasks", "assetIdentificationTasks"]
- * @REQUIRED_TOOLS ["YuhConnector", "getButtonClasses", "fetchUserProgress", "supabase"]
+ * @DATA_INPUTS ["fetchUserProgress", "resetAllProgress", "assetCoachTasks", "assetIdentificationTasks"]
+ * @REQUIRED_TOOLS ["YuhConnector", "getButtonClasses", "fetchUserProgress", "resetAllProgress", "supabase"]
  */
 "use client";
 
@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getButtonClasses } from "@/shared/components/Button";
 import { YuhConnector } from "@/shared/tools/YuhConnector";
-import { fetchUserProgress } from "@/core/progress";
+import { fetchUserProgress, resetAllProgress } from "@/core/progress";
 import { supabase, isSupabaseConfigured } from "@/core/supabase";
 import { assetCoachTasks } from "@/features/stage-1/asset-coach/tasks.config";
 import { assetIdentificationTasks } from "@/features/stage-1/asset-identification/tasks.config";
@@ -126,12 +126,30 @@ export default function Home() {
     ? buildModuleRoute(stageId, moduleId)
     : buildModuleRoute(defaultStage, defaultModule);
 
+  const showDevReset = process.env.NODE_ENV === "development";
+
   const lastSyncLabel = lastSync
     ? new Date(lastSync).toLocaleTimeString("en-GB", {
         hour: "2-digit",
         minute: "2-digit",
       })
     : "--:--";
+
+  const handleDevReset = async () => {
+    if (!isSupabaseConfigured) {
+      window.location.reload();
+      return;
+    }
+
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      window.location.reload();
+      return;
+    }
+
+    await resetAllProgress(data.user.id);
+    window.location.reload();
+  };
 
   return (
     <div className="space-y-10">
@@ -206,6 +224,18 @@ export default function Home() {
           <YuhConnector action="connect" label="Open Yuh" />
         </div>
       </section>
+
+      {showDevReset ? (
+        <div className="pt-2 text-xs text-slate-500">
+          <button
+            className="text-slate-500 hover:text-slate-300"
+            type="button"
+            onClick={handleDevReset}
+          >
+            Dev-Reset
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

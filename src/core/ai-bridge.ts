@@ -5,6 +5,7 @@
  * @REQUIRED_TOOLS ["logManagementProtocol"]
  */
 import { logManagementProtocol } from "@/core/agent-factory";
+import { calculateCost, estimateTokens } from "@/core/cost-engine";
 
 type ProviderId = "openai" | "anthropic" | "google";
 
@@ -12,12 +13,16 @@ type SmartAIRequest = {
   prompt: string;
   userId?: string | null;
   organizationId?: string | null;
+  agentName?: string | null;
 };
 
 type SmartAIResponse = {
   text: string;
   providerUsed: ProviderId;
   failoverUsed: boolean;
+  tokenCount: number;
+  costUsd: number;
+  costChf: number;
 };
 
 type ProviderHandler = (prompt: string) => Promise<string>;
@@ -77,6 +82,7 @@ export const getSmartAIResponse = async ({
   prompt,
   userId,
   organizationId,
+  agentName,
 }: SmartAIRequest): Promise<SmartAIResponse> => {
   const providerOrder = buildProviderOrder();
   let lastError: unknown = null;
@@ -87,6 +93,11 @@ export const getSmartAIResponse = async ({
     try {
       const text = await handler(prompt);
       const failoverUsed = index > 0;
+      const tokenCount = estimateTokens(`${prompt} ${text}`);
+      const { costUsd, costChf } = calculateCost({
+        tokens: tokenCount,
+        provider,
+      });
 
       if (failoverUsed && userId) {
         await logManagementProtocol({
@@ -98,7 +109,27 @@ export const getSmartAIResponse = async ({
         });
       }
 
-      return { text, providerUsed: provider, failoverUsed };
+      if (userId) {
+        await supabase.from("billing_logs").insert({
+          user_id: userId,
+          organization_id: organizationId ?? null,
+          provider,
+          agent_name: agentName ?? null,
+          token_count: tokenCount,
+          cost_usd: costUsd,
+          cost_chf: costChf,
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      return {
+        text,
+        providerUsed: provider,
+        failoverUsed,
+        tokenCount,
+        costUsd,
+        costChf,
+      };
     } catch (error) {
       lastError = error;
       const isRateLimit = detectRateLimit(error);

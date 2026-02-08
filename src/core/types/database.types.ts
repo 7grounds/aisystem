@@ -72,6 +72,42 @@ export interface Database {
         };
         Relationships: [];
       };
+      billing_logs: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          organization_id: string | null;
+          provider: string;
+          agent_name: string | null;
+          token_count: number;
+          cost_usd: number | null;
+          cost_chf: number | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          organization_id?: string | null;
+          provider: string;
+          agent_name?: string | null;
+          token_count: number;
+          cost_usd?: number | null;
+          cost_chf?: number | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          organization_id?: string | null;
+          provider?: string;
+          agent_name?: string | null;
+          token_count?: number;
+          cost_usd?: number | null;
+          cost_chf?: number | null;
+          created_at?: string | null;
+        };
+        Relationships: [];
+      };
       search_logs: {
         Row: {
           id: string;

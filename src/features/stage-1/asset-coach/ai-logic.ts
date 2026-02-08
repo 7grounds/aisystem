@@ -8,6 +8,7 @@ import type { AssetProfile } from "@/shared/tools/IsinAnalyzer";
 import { isLikelyIsin, lookupAsset } from "@/shared/tools/IsinAnalyzer";
 import { calcReferenceFee, calcYuhFee } from "@/shared/tools/FeeCalculator";
 import { buildYuhDeepLink } from "@/shared/tools/YuhConnector";
+import { supabase } from "@/core/supabase";
 
 const formatAssetLabel = (assetLabel: string) => {
   const cleaned = assetLabel.trim();
@@ -77,6 +78,11 @@ export type AgentOutput = {
   statusSteps: AgentStatusStep[];
 };
 
+type AgentPersistenceContext = {
+  userId?: string | null;
+  organizationId?: string | null;
+};
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const runAssetCoachAgent = async (
@@ -84,6 +90,7 @@ export const runAssetCoachAgent = async (
   amountChf = 1000,
   basePrompt?: string,
   onStatus?: (step: AgentStatusStep, steps: AgentStatusStep[]) => void,
+  persistence?: AgentPersistenceContext,
 ): Promise<AgentOutput> => {
   const statusSteps: AgentStatusStep[] = [];
   const pushStatus = (label: string) => {
@@ -144,6 +151,22 @@ export const runAssetCoachAgent = async (
       : "Assessment calibrated to Swiss wealth engineering standards.",
     "Analysis based on live tool-data.",
   ].join("\n\n");
+
+  if (persistence?.userId) {
+    const isin = isLikelyIsin(assetInput)
+      ? assetInput.trim().toUpperCase()
+      : asset?.symbol ?? assetInput.trim();
+    await supabase.from("user_asset_history").insert({
+      user_id: persistence.userId,
+      organization_id: persistence.organizationId ?? null,
+      isin,
+      asset_name: asset?.name ?? label,
+      last_amount: amountChf,
+      last_fee: yuhFee,
+      currency: asset?.currency ?? "CHF",
+      analyzed_at: new Date().toISOString(),
+    });
+  }
 
   return {
     finalResponse,

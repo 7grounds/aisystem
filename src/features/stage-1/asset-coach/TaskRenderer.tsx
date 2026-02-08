@@ -47,6 +47,7 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [analysisSeed, setAnalysisSeed] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [assetLookupState, setAssetLookupState] = useState<{
     status: "idle" | "loading" | "found" | "not-found";
     asset: AssetProfile | null;
@@ -63,6 +64,8 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
     return Object.values(completedTasks).filter(Boolean).length;
   }, [completedTasks]);
   const assetInput = inputValues[INPUT_TASK_ID] ?? "";
+  const currentTask = tasks[currentIndex];
+  const isLastStep = currentIndex === tasks.length - 1;
 
   useEffect(() => {
     setTotalTasks(tasks.length);
@@ -130,7 +133,7 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
     let isActive = true;
 
     const runAgent = async () => {
-      if (!assetInput.trim()) {
+      if (!assetInput.trim() || currentTask?.type !== "ai-coach") {
         setAgentOutput(null);
         setAgentStatus([]);
         setStatusIndicator(null);
@@ -157,6 +160,10 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
             setStatusIndicator("Agent is analyzing...");
           }
         },
+        {
+          userId,
+          organizationId,
+        },
       );
       if (!isActive) return;
       setAgentStatus(result.statusSteps);
@@ -170,7 +177,7 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
     return () => {
       isActive = false;
     };
-  }, [assetInput, tasks]);
+  }, [assetInput, tasks, currentTask?.type, userId, organizationId]);
   useEffect(() => {
     let isMounted = true;
 
@@ -179,9 +186,17 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
       if (!isMounted) return;
       if (error || !data.user) {
         setUserId(null);
+        setOrganizationId(null);
         return;
       }
       setUserId(data.user.id);
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      if (!isMounted) return;
+      setOrganizationId(profile?.organization_id ?? null);
     };
 
     resolveUser();
@@ -190,9 +205,6 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
       isMounted = false;
     };
   }, []);
-
-  const currentTask = tasks[currentIndex];
-  const isLastStep = currentIndex === tasks.length - 1;
 
   const analysis = useMemo(() => {
     return generateSwissWealthAnalysis(assetInput);

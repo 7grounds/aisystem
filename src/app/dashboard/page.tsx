@@ -20,6 +20,51 @@ import { feeMonsterTasks } from "@/features/stage-2/fee-monster/tasks.config";
 type AssetHistoryRow =
   Database["public"]["Tables"]["user_asset_history"]["Row"];
 
+type RecentAnalysesProps = {
+  entries: AssetHistoryRow[];
+};
+
+const formatDate = (value: string | null) => {
+  if (!value) return "--";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "--";
+  return parsed.toLocaleDateString("de-CH", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
+const RecentAnalyses = ({ entries }: RecentAnalysesProps) => {
+  if (entries.length === 0) {
+    return <p className="text-sm text-slate-400">No asset history yet.</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {entries.map((entry) => (
+        <div
+          key={entry.id}
+          className="flex flex-col gap-2 rounded-2xl border border-slate-800/80 bg-slate-900/60 px-4 py-3 text-sm text-slate-200"
+        >
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-slate-100">
+              {entry.asset_name ?? entry.isin}
+            </span>
+            <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
+              {entry.isin}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center justify-between text-xs uppercase tracking-[0.2em] text-slate-400">
+            <span>Datum: {formatDate(entry.analyzed_at)}</span>
+            <span>Org: {entry.organization_id ?? "--"}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const DashboardPage = () => {
   const defaultStage = "stage-1";
   const defaultModule = "asset-coach";
@@ -204,13 +249,6 @@ const DashboardPage = () => {
     },
   ];
 
-  const formatValue = (value: number | null) => {
-    if (value === null || Number.isNaN(value)) {
-      return "--";
-    }
-    return value.toFixed(2);
-  };
-
   return (
     <div className="space-y-10">
       <section className="rounded-3xl bg-slate-950 px-8 py-10 text-slate-100 shadow-[0_25px_60px_rgba(15,23,42,0.4)]">
@@ -281,34 +319,8 @@ const DashboardPage = () => {
           <span>Recent Asset Analysis</span>
           <span>Last 5</span>
         </div>
-        <div className="mt-5 space-y-3">
-          {assetHistory.length === 0 ? (
-            <p className="text-sm text-slate-400">
-              No asset history yet.
-            </p>
-          ) : (
-            assetHistory.map((entry) => (
-              <div
-                key={entry.id}
-                className="flex flex-col gap-2 rounded-2xl border border-slate-800/80 bg-slate-900/60 px-4 py-3 text-sm text-slate-200"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-100">
-                    {entry.asset_name ?? entry.isin}
-                  </span>
-                  <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                    {entry.isin}
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center justify-between text-xs uppercase tracking-[0.2em] text-slate-400">
-                  <span>
-                    Amount: {formatValue(entry.last_amount)} {entry.currency ?? "CHF"}
-                  </span>
-                  <span>Fee: {formatValue(entry.last_fee)} CHF</span>
-                </div>
-              </div>
-            ))
-          )}
+        <div className="mt-5">
+          <RecentAnalyses entries={assetHistory} />
         </div>
       </section>
 

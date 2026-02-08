@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { TaskDefinition } from "@/shared/tools/taskSchema";
 import { useProgressStore } from "@/core/store";
+import { useTenant } from "@/core/tenant-context";
 import { supabase } from "@/core/supabase";
 import { updateTaskProgress } from "@/core/progress";
 import { Card } from "@/shared/components/Card";
@@ -47,7 +48,6 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [analysisSeed, setAnalysisSeed] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [assetLookupState, setAssetLookupState] = useState<{
     status: "idle" | "loading" | "found" | "not-found";
     asset: AssetProfile | null;
@@ -60,6 +60,7 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
   const [statusIndicator, setStatusIndicator] = useState<string | null>(null);
 
   const { setTotalTasks, setCompletedTasks } = useProgressStore();
+  const { organization } = useTenant();
   const completedCount = useMemo(() => {
     return Object.values(completedTasks).filter(Boolean).length;
   }, [completedTasks]);
@@ -162,7 +163,7 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
         },
         {
           userId,
-          organizationId,
+          organizationId: organization?.id ?? null,
         },
       );
       if (!isActive) return;
@@ -177,7 +178,7 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
     return () => {
       isActive = false;
     };
-  }, [assetInput, tasks, currentTask?.type, userId, organizationId]);
+  }, [assetInput, tasks, currentTask?.type, userId, organization?.id]);
   useEffect(() => {
     let isMounted = true;
 
@@ -186,17 +187,9 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
       if (!isMounted) return;
       if (error || !data.user) {
         setUserId(null);
-        setOrganizationId(null);
         return;
       }
       setUserId(data.user.id);
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("organization_id")
-        .eq("id", data.user.id)
-        .maybeSingle();
-      if (!isMounted) return;
-      setOrganizationId(profile?.organization_id ?? null);
     };
 
     resolveUser();

@@ -152,13 +152,14 @@ export const runAssetCoachAgent = async (
     "Analysis based on live tool-data.",
   ].join("\n\n");
 
-  if (persistence?.userId) {
+  let persisted = false;
+  if (persistence?.userId && persistence.organizationId) {
     const isin = isLikelyIsin(assetInput)
       ? assetInput.trim().toUpperCase()
       : asset?.symbol ?? assetInput.trim();
     await supabase.from("user_asset_history").insert({
       user_id: persistence.userId,
-      organization_id: persistence.organizationId ?? null,
+      organization_id: persistence.organizationId,
       isin,
       asset_name: asset?.name ?? label,
       last_amount: amountChf,
@@ -166,10 +167,15 @@ export const runAssetCoachAgent = async (
       currency: asset?.currency ?? "CHF",
       analyzed_at: new Date().toISOString(),
     });
+    persisted = true;
   }
 
+  const persistenceNote = persisted
+    ? "Ich habe die Analyse in deinem Wealth Lab protokolliert."
+    : null;
+
   return {
-    finalResponse,
+    finalResponse: [finalResponse, persistenceNote].filter(Boolean).join("\n\n"),
     hardContext,
     statusSteps,
   };

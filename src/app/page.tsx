@@ -11,11 +11,14 @@ import { supabase } from "@/core/supabase";
 import { ensureUserOrganization } from "@/core/auth-service";
 
 export default function Home() {
+  const TEST_EMAIL = "test@zasterix.ch";
+  const TEST_PASSWORD = "Zasterix2026!";
+
   const [dbStatus, setDbStatus] = useState<
     "idle" | "checking" | "connected" | "error"
   >("idle");
-  const [email, setEmail] = useState("test@zasterix.ch");
-  const [password, setPassword] = useState("Zasterix2026!");
+  const [email, setEmail] = useState(TEST_EMAIL);
+  const [password, setPassword] = useState(TEST_PASSWORD);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -26,7 +29,7 @@ export default function Home() {
       setDbStatus("checking");
       const { error } = await supabase
         .from("organizations")
-        .select("count");
+        .select("id", { count: "exact", head: true });
       if (!isMounted) return;
       if (!error) {
         setDbStatus("connected");
@@ -47,24 +50,54 @@ export default function Home() {
     };
   }, []);
 
-  const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const resolveOrganizationId = async (userId: string) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("organization_id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error || !data?.organization_id) {
+      const result = await ensureUserOrganization({
+        organizationName: "Zasterix Labor",
+      });
+      return result.organization?.id ?? null;
+    }
+
+    return data.organization_id;
+  };
+
+  const loginWithCredentials = async (
+    loginEmail: string,
+    loginPassword: string,
+  ) => {
     setIsSubmitting(true);
     setAuthError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
+      password: loginPassword,
     });
 
-    if (error) {
-      setAuthError(error.message);
+    if (error || !data.user) {
+      setAuthError(error?.message ?? "Login failed.");
       setIsSubmitting(false);
       return;
     }
 
-    await ensureUserOrganization({ organizationName: "Zasterix Labor" });
+    await resolveOrganizationId(data.user.id);
     window.location.href = "/dashboard";
+  };
+
+  const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await loginWithCredentials(email, password);
+  };
+
+  const handleTestLogin = async () => {
+    setEmail(TEST_EMAIL);
+    setPassword(TEST_PASSWORD);
+    await loginWithCredentials(TEST_EMAIL, TEST_PASSWORD);
   };
 
   return (
@@ -113,13 +146,23 @@ export default function Home() {
             {authError}
           </p>
         ) : null}
-        <button
-          className="w-full rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-emerald-400"
-          disabled={isSubmitting}
-          type="submit"
-        >
-          {isSubmitting ? "Signing in..." : "Login"}
-        </button>
+        <div className="space-y-3">
+          <button
+            className="w-full rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-emerald-400"
+            disabled={isSubmitting}
+            type="submit"
+          >
+            {isSubmitting ? "Signing in..." : "Login"}
+          </button>
+          <button
+            className="w-full rounded-full border border-slate-700 px-5 py-3 text-xs uppercase tracking-[0.24em] text-slate-300 transition hover:border-emerald-400/60 hover:text-emerald-200"
+            disabled={isSubmitting}
+            type="button"
+            onClick={handleTestLogin}
+          >
+            Login mit Test-User
+          </button>
+        </div>
       </form>
     </div>
   );

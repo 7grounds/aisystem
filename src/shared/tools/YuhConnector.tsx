@@ -16,7 +16,7 @@ type YuhConnectorProps = {
   className?: string;
 };
 
-const buildYuhDeepLink = ({
+export const buildYuhDeepLink = ({
   action,
   amount,
   currency,

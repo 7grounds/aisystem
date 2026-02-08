@@ -1,11 +1,13 @@
 /**
  * @MODULE_ID stage-1.asset-coach.ai-logic
  * @STAGE stage-1
- * @DATA_INPUTS ["assetLabel", "isin"]
- * @REQUIRED_TOOLS ["IsinAnalyzer"]
+ * @DATA_INPUTS ["assetLabel", "isin", "amount"]
+ * @REQUIRED_TOOLS ["IsinAnalyzer", "FeeCalc", "YuhLinker"]
  */
 import type { AssetProfile } from "@/shared/tools/IsinAnalyzer";
 import { lookupAsset } from "@/shared/tools/IsinAnalyzer";
+import { calcReferenceFee, calcYuhFee } from "@/shared/tools/FeeCalculator";
+import { buildYuhDeepLink } from "@/shared/tools/YuhConnector";
 
 const formatAssetLabel = (assetLabel: string) => {
   const cleaned = assetLabel.trim();
@@ -23,6 +25,19 @@ export const generateSwissWealthAnalysis = (assetLabel: string) => {
   ].join("\n\n");
 };
 
+const agentToolSystemPrompt = [
+  "Tools Available:",
+  "- Tool [IsinLookup]: Use this to get the Name, Symbol, and Asset-Type from an ISIN or Name.",
+  "- Tool [FeeCalc]: Use this to calculate the 0.95% Yuh fee for a given CHF amount.",
+  "- Tool [YuhLinker]: Use this to generate the final deep-link for the transaction.",
+  "",
+  "Agentic Loop:",
+  "1. Thought: Identify missing information.",
+  "2. Action: Call a required Tool from /shared/tools/.",
+  "3. Observation: Process data returned by the tool.",
+  "4. Final Response: Produce a professional Wealth Engineer recommendation.",
+].join("\n");
+
 export const generateAssetCoachPrompt = async (
   assetInput: string,
   basePrompt?: string,
@@ -34,6 +49,8 @@ export const generateAssetCoachPrompt = async (
     : "Hard Context: Asset lookup not found. Treat as unknown.";
   const label = formatAssetLabel(assetInput);
   const prompt = [
+    agentToolSystemPrompt,
+    "",
     hardContext,
     `User input: ${label}.`,
     basePrompt ??
@@ -44,5 +61,80 @@ export const generateAssetCoachPrompt = async (
     prompt,
     hardContext,
     asset: resolvedAsset,
+  };
+};
+
+const formatChf = (value: number) => `CHF ${value.toFixed(2)}`;
+
+export type AgentStatusStep = {
+  label: string;
+  timestamp: number;
+};
+
+export type AgentOutput = {
+  finalResponse: string;
+  hardContext: string;
+  statusSteps: AgentStatusStep[];
+};
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const runAssetCoachAgent = async (
+  assetInput: string,
+  amountChf = 1000,
+  basePrompt?: string,
+  onStatus?: (step: AgentStatusStep, steps: AgentStatusStep[]) => void,
+): Promise<AgentOutput> => {
+  const statusSteps: AgentStatusStep[] = [];
+  const pushStatus = (label: string) => {
+    const step = { label, timestamp: Date.now() };
+    statusSteps.push(step);
+    onStatus?.(step, [...statusSteps]);
+  };
+
+  pushStatus("Thought: Identify missing asset details.");
+  pushStatus("Action: Tool [IsinLookup]");
+  const asset = await lookupAsset(assetInput);
+  pushStatus(
+    `Observation: ${asset ? `${asset.name} (${asset.symbol})` : "No match"}.`,
+  );
+
+  pushStatus("Thought: Calculate Yuh transaction fee.");
+  pushStatus("Action: Tool [FeeCalc]");
+  await sleep(250);
+  const yuhFee = calcYuhFee(amountChf);
+  const referenceFee = calcReferenceFee(amountChf);
+  pushStatus(
+    `Observation: Yuh ${formatChf(yuhFee)} vs Reference ${formatChf(referenceFee)}.`,
+  );
+
+  pushStatus("Thought: Prepare execution link.");
+  pushStatus("Action: Tool [YuhLinker]");
+  await sleep(150);
+  const yuhLink = buildYuhDeepLink({ action: "connect" });
+  pushStatus(`Observation: Link ready (${yuhLink}).`);
+
+  const hardContext = asset
+    ? `Hard Context: ${asset.name} (${asset.symbol}) is a ${asset.type} in ${asset.currency}.`
+    : "Hard Context: Asset lookup not found. Treat as unknown.";
+  const label = formatAssetLabel(assetInput);
+
+  const finalResponse = [
+    hardContext,
+    `Wealth Engineer Recommendation: ${label} should be assessed with CHF liquidity resilience, correlation against core holdings, and fee drag sensitivity.`,
+    `Fee insight: Yuh fee on ${formatChf(amountChf)} is ${formatChf(
+      yuhFee,
+    )}; a reference bank would charge ${formatChf(referenceFee)}.`,
+    `Execution readiness: ${yuhLink}`,
+    basePrompt
+      ? `Additional Prompt Context: ${basePrompt}`
+      : "Assessment calibrated to Swiss wealth engineering standards.",
+    "Analysis based on live tool-data.",
+  ].join("\n\n");
+
+  return {
+    finalResponse,
+    hardContext,
+    statusSteps,
   };
 };

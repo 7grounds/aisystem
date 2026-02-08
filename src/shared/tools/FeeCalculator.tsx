@@ -14,6 +14,9 @@ const parseAmount = (value: string) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+export const calcYuhFee = (amount: number) => Math.max(1, amount * 0.0095);
+export const calcReferenceFee = (amount: number) => amount * 0.02 + 15;
+
 const formatCurrency = (value: number) => {
   return `CHF ${value.toFixed(2)}`;
 };
@@ -22,8 +25,8 @@ export const FeeCalculator = () => {
   const [amountInput, setAmountInput] = useState("1000");
 
   const amount = useMemo(() => parseAmount(amountInput), [amountInput]);
-  const yuhFee = useMemo(() => Math.max(1, amount * 0.0095), [amount]);
-  const referenceFee = useMemo(() => amount * 0.02 + 15, [amount]);
+  const yuhFee = useMemo(() => calcYuhFee(amount), [amount]);
+  const referenceFee = useMemo(() => calcReferenceFee(amount), [amount]);
   const maxFee = Math.max(yuhFee, referenceFee, 1);
 
   const yuhWidth = Math.min(100, Math.round((yuhFee / maxFee) * 100));

@@ -14,7 +14,12 @@ import { updateTaskProgress } from "@/core/progress";
 import { Card } from "@/shared/components/Card";
 import { Button } from "@/shared/components/Button";
 import { YuhConnector } from "@/shared/tools/YuhConnector";
-import { generateAssetCoachPrompt, generateSwissWealthAnalysis } from "./ai-logic";
+import {
+  generateAssetCoachPrompt,
+  generateSwissWealthAnalysis,
+  runAssetCoachAgent,
+  type AgentStatusStep,
+} from "./ai-logic";
 import { lookupAsset, isLikelyIsin, type AssetProfile } from "@/shared/tools/IsinAnalyzer";
 
 type TaskRendererProps = {
@@ -47,6 +52,9 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
   }>({ status: "idle", asset: null });
   const [aiPrompt, setAiPrompt] = useState<string | null>(null);
   const [hardContext, setHardContext] = useState<string | null>(null);
+  const [agentStatus, setAgentStatus] = useState<AgentStatusStep[]>([]);
+  const [agentOutput, setAgentOutput] = useState<string | null>(null);
+  const [agentRunning, setAgentRunning] = useState(false);
 
   const { setTotalTasks, setCompletedTasks } = useProgressStore();
   const completedCount = useMemo(() => {
@@ -95,6 +103,8 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
       if (!assetInput.trim()) {
         setAiPrompt(null);
         setHardContext(null);
+        setAgentOutput(null);
+        setAgentStatus([]);
         return;
       }
       const result = await generateAssetCoachPrompt(
@@ -113,6 +123,39 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
       isActive = false;
     };
   }, [assetInput, assetLookupState.asset, tasks]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const runAgent = async () => {
+      if (!assetInput.trim()) {
+        setAgentOutput(null);
+        setAgentStatus([]);
+        return;
+      }
+      setAgentRunning(true);
+      const result = await runAssetCoachAgent(
+        assetInput,
+        1000,
+        tasks.find((task) => task.type === "ai-coach")?.prompt,
+        (_step, steps) => {
+          if (!isActive) return;
+          setAgentStatus(steps);
+        },
+      );
+      if (!isActive) return;
+      setAgentStatus(result.statusSteps);
+      setHardContext(result.hardContext);
+      setAgentOutput(result.finalResponse);
+      setAgentRunning(false);
+    };
+
+    runAgent();
+
+    return () => {
+      isActive = false;
+    };
+  }, [assetInput, tasks]);
   useEffect(() => {
     let isMounted = true;
 
@@ -264,13 +307,25 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
               <p className="text-xs uppercase tracking-[0.26em] text-emerald-400">
                 AI-Generated Assessment
               </p>
+              {agentRunning ? (
+                <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-xs uppercase tracking-[0.2em] text-emerald-200">
+                  Agent is calling tools...
+                </div>
+              ) : null}
+              {agentStatus.length > 0 ? (
+                <div className="space-y-1 text-xs text-slate-400">
+                  {agentStatus.slice(-3).map((step) => (
+                    <p key={step.timestamp}>{step.label}</p>
+                  ))}
+                </div>
+              ) : null}
               {hardContext ? (
                 <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
                   {hardContext}
                 </p>
               ) : null}
               <div className="space-y-4 text-sm">
-                {renderParagraphs(analysis)}
+                {renderParagraphs(agentOutput ?? analysis)}
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <Button

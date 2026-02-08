@@ -163,6 +163,27 @@ export default function Home() {
     window.location.reload();
   };
 
+  const toolTiles = [
+    {
+      id: "asset-check",
+      label: "Asset-Check",
+      href: "/stage-1/asset-coach",
+      external: false,
+    },
+    {
+      id: "fee-calculator",
+      label: "Fee-Calculator",
+      href: "/stage-2/fee-monster",
+      external: false,
+    },
+    {
+      id: "yuh-link",
+      label: "Yuh-Link",
+      href: "yuh://connect",
+      external: true,
+    },
+  ];
+
   return (
     <div className="space-y-10">
       <section className="rounded-3xl bg-slate-950 px-8 py-10 text-slate-100 shadow-[0_25px_60px_rgba(15,23,42,0.4)]">
@@ -173,11 +194,11 @@ export default function Home() {
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="text-3xl font-semibold">{activeMeta.title}</h2>
-            {isModuleCompleted ? (
-              <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
-                ✓ Completed
-              </span>
-            ) : null}
+              {isModuleCompleted ? (
+                <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+                  ✓ Completed
+                </span>
+              ) : null}
             </div>
             <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
               {activeMeta.description}
@@ -225,6 +246,34 @@ export default function Home() {
         </div>
         <div className="mt-6 text-xs uppercase tracking-[0.24em] text-slate-400">
           Last Sync: {lastSyncLabel}
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-800/70 bg-slate-950 px-8 py-8 text-slate-100 shadow-[0_20px_55px_rgba(15,23,42,0.4)]">
+        <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-slate-400">
+          <span>Available Tools</span>
+          <span>Quick Access</span>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          {toolTiles.map((tool) =>
+            tool.external ? (
+              <a
+                key={tool.id}
+                className="flex items-center justify-center rounded-2xl border border-slate-800/80 bg-slate-900/60 px-4 py-4 text-xs uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/60 hover:text-emerald-200"
+                href={tool.href}
+              >
+                {tool.label}
+              </a>
+            ) : (
+              <Link
+                key={tool.id}
+                className="flex items-center justify-center rounded-2xl border border-slate-800/80 bg-slate-900/60 px-4 py-4 text-xs uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/60 hover:text-emerald-200"
+                href={tool.href}
+              >
+                {tool.label}
+              </Link>
+            ),
+          )}
         </div>
       </section>
 

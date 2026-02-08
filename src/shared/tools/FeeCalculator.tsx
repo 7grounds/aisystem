@@ -1,6 +1,6 @@
 /**
- * @MODULE_ID stage-2.fee-monster.fee-calculator
- * @STAGE stage-2
+ * @MODULE_ID shared.tools.fee-calculator
+ * @STAGE global
  * @DATA_INPUTS ["amount"]
  * @REQUIRED_TOOLS []
  */
@@ -23,11 +23,14 @@ export const FeeCalculator = () => {
 
   const amount = useMemo(() => parseAmount(amountInput), [amountInput]);
   const yuhFee = useMemo(() => Math.max(1, amount * 0.0095), [amount]);
-  const bankFee = useMemo(() => amount * 0.02 + 15, [amount]);
-  const maxFee = Math.max(yuhFee, bankFee, 1);
+  const referenceFee = useMemo(() => amount * 0.02 + 15, [amount]);
+  const maxFee = Math.max(yuhFee, referenceFee, 1);
 
   const yuhWidth = Math.min(100, Math.round((yuhFee / maxFee) * 100));
-  const bankWidth = Math.min(100, Math.round((bankFee / maxFee) * 100));
+  const referenceWidth = Math.min(
+    100,
+    Math.round((referenceFee / maxFee) * 100),
+  );
 
   return (
     <div className="space-y-4">
@@ -59,13 +62,15 @@ export const FeeCalculator = () => {
 
       <div className="space-y-3">
         <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-slate-400">
-          <span>Big Bank Fee</span>
-          <span className="text-rose-400">{formatCurrency(bankFee)}</span>
+          <span>Reference Fee</span>
+          <span className="text-rose-400">
+            {formatCurrency(referenceFee)}
+          </span>
         </div>
         <div className="h-2 w-full rounded-full bg-slate-200/70">
           <div
             className="h-2 rounded-full bg-rose-400"
-            style={{ width: `${bankWidth}%` }}
+            style={{ width: `${referenceWidth}%` }}
           />
         </div>
       </div>

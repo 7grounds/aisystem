@@ -5,7 +5,7 @@
  * @REQUIRED_TOOLS ["ModuleShell", "FeeCalculator"]
  */
 import { ModuleShell } from "@/shared/components/ModuleShell";
-import { FeeCalculator } from "./FeeCalculator";
+import { FeeCalculator } from "@/shared/tools/FeeCalculator";
 import { feeMonsterTasks } from "./tasks.config";
 
 export const FeeMonsterModule = () => {

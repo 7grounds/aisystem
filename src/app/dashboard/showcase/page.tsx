@@ -22,6 +22,8 @@ type AgentShowcase = {
   description: string;
   roi: string;
   category: string;
+  isActive: boolean;
+  isAvailable: boolean;
 };
 
 type ChatMessage = {
@@ -29,7 +31,7 @@ type ChatMessage = {
   content: string;
 };
 
-const AGENT_SHOWCASE: AgentShowcase[] = [
+const AGENT_SHOWCASE = [
   {
     id: "tax-optimizer",
     icon: "🧾",
@@ -71,6 +73,8 @@ const ShowcasePage = () => {
   const [showArchitectChat, setShowArchitectChat] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeCategory, setActiveCategory] = useState("Alle");
 
   useEffect(() => {
     let isMounted = true;
@@ -92,32 +96,77 @@ const ShowcasePage = () => {
     };
   }, [organization?.id]);
 
-  const activatedAgents = useMemo(() => {
-    if (!organization?.id) return new Set<string>();
-    return new Set(
-      templates
-        .filter((template) => template.organizationId === organization.id)
-        .map((template) => template.name),
-    );
-  }, [organization?.id, templates]);
-
-  const availableAgents = useMemo(() => {
-    return new Set(
-      templates
-        .filter((template) => template.organizationId === null)
-        .map((template) => template.name),
-    );
-  }, [templates]);
-
-  const groupedAgents = useMemo(() => {
-    return AGENT_SHOWCASE.reduce<Record<string, AgentShowcase[]>>((acc, agent) => {
-      if (!acc[agent.category]) {
-        acc[agent.category] = [];
+  const templateIndex = useMemo(() => {
+    return templates.reduce<Record<string, AgentTemplate[]>>((acc, template) => {
+      if (!acc[template.name]) {
+        acc[template.name] = [];
       }
-      acc[agent.category].push(agent);
+      acc[template.name].push(template);
       return acc;
     }, {});
-  }, []);
+  }, [templates]);
+
+  const galleryAgents = useMemo(() => {
+    const results: AgentShowcase[] = [];
+    const usedNames = new Set<string>();
+    const fallbackRoi =
+      "Fokussierte Expertise reduziert Entscheidungsrisiken und beschleunigt die Umsetzung.";
+
+    AGENT_SHOWCASE.forEach((agent) => {
+      const matches = templateIndex[agent.title] ?? [];
+      const orgTemplate = matches.find(
+        (template) => template.organizationId === organization?.id,
+      );
+      const globalTemplate = matches.find(
+        (template) => template.organizationId === null,
+      );
+
+      const source = orgTemplate ?? globalTemplate;
+      const isActive = Boolean(orgTemplate);
+      const isAvailable = Boolean(globalTemplate) || !isActive;
+
+      results.push({
+        id: agent.id,
+        icon: source?.icon ?? agent.icon,
+        title: source?.name ?? agent.title,
+        description: source?.description ?? agent.description,
+        roi: agent.roi,
+        category: source?.category ?? agent.category,
+        isActive,
+        isAvailable,
+      });
+
+      usedNames.add(agent.title);
+    });
+
+    templates.forEach((template) => {
+      if (usedNames.has(template.name)) return;
+      results.push({
+        id: template.id,
+        icon: template.icon ?? "🧠",
+        title: template.name,
+        description: template.description,
+        roi: fallbackRoi,
+        category: template.category ?? "General",
+        isActive: template.organizationId === organization?.id,
+        isAvailable: template.organizationId === null,
+      });
+    });
+
+    return results;
+  }, [organization?.id, templateIndex, templates]);
+
+  const filteredAgents = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    return galleryAgents.filter((agent) => {
+      const matchesCategory =
+        activeCategory === "Alle" || agent.category === activeCategory;
+      if (!matchesCategory) return false;
+      if (!normalizedSearch) return true;
+      const haystack = `${agent.title} ${agent.description} ${agent.category}`.toLowerCase();
+      return haystack.includes(normalizedSearch);
+    });
+  }, [activeCategory, galleryAgents, searchTerm]);
 
   useEffect(() => {
     if (!showArchitectChat) {
@@ -137,84 +186,118 @@ const ShowcasePage = () => {
   return (
     <div className="space-y-8">
       <section className="rounded-3xl border border-slate-800/70 bg-slate-950 px-8 py-8 text-slate-100 shadow-[0_20px_55px_rgba(15,23,42,0.4)]">
-        <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-slate-400">
+        <div className="flex flex-wrap items-center justify-between gap-4 text-xs uppercase tracking-[0.3em] text-slate-400">
           <span>Agent-Showcase</span>
-          <span>Galerie</span>
+          <span>Infinite Gallery</span>
         </div>
-        <div className="mt-6 space-y-8">
-          {Object.entries(groupedAgents).map(([category, agents]) => (
-            <div key={category} className="space-y-3">
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
+
+        <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <input
+            className="w-full rounded-2xl border border-slate-800/80 bg-slate-900 px-4 py-3 text-sm text-slate-100 shadow-sm focus:border-emerald-400 focus:outline-none lg:max-w-md"
+            placeholder="Suche nach Agenten, Nutzen oder Kategorie..."
+            type="text"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+          />
+          <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-slate-400">
+            {["Alle", "Finanzen", "Recht", "Medizin"].map((category) => (
+              <button
+                key={category}
+                className={`rounded-full px-3 py-2 ${
+                  activeCategory === category
+                    ? "bg-emerald-500 text-slate-900"
+                    : "border border-slate-800/80 text-slate-300"
+                }`}
+                type="button"
+                onClick={() => setActiveCategory(category)}
+              >
                 {category}
-              </p>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {agents.map((agent) => {
-                  const isActive = activatedAgents.has(agent.title);
-                  const isAvailable = availableAgents.has(agent.title);
-                  const statusLabel = isActive
-                    ? "Aktiviert"
-                    : isAvailable
-                      ? "Verfügbar"
-                      : "Nicht verfügbar";
-                  return (
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6">
+          {filteredAgents.length === 0 ? (
+            <button
+              className="flex w-full flex-col justify-between rounded-2xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-4 text-left text-sm text-emerald-200 transition hover:border-emerald-300"
+              type="button"
+              onClick={() => setShowArchitectChat(true)}
+            >
+              <div className="space-y-2">
+                <span className="text-xl">✨</span>
+                <h3 className="text-base font-semibold">
+                  Agent nicht gefunden? Lass den Architect einen neuen bauen!
+                </h3>
+                <p className="text-xs uppercase tracking-[0.2em] text-emerald-200/80">
+                  Beschreibe den Case und starte den Bauprozess.
+                </p>
+              </div>
+              <div className="mt-3 text-xs uppercase tracking-[0.2em] text-emerald-200">
+                Architect-Chat öffnen
+              </div>
+            </button>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+              {filteredAgents.map((agent) => {
+                const statusLabel = agent.isActive
+                  ? "Aktiviert"
+                  : agent.isAvailable
+                    ? "Verfügbar"
+                    : "Nicht verfügbar";
+                return (
+                  <div
+                    key={agent.id}
+                    className="flex h-full flex-col justify-between rounded-2xl border border-slate-800/80 bg-slate-900/60 p-3 text-left text-sm text-slate-200 transition hover:border-emerald-400/60"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-xl">{agent.icon}</span>
+                      <div className="flex items-center gap-2">
+                        {agent.isActive ? (
+                          <span className="relative flex h-2 w-2">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                          </span>
+                        ) : null}
+                        <span
+                          className={`rounded-full px-2 py-1 text-[9px] uppercase tracking-[0.2em] ${
+                            agent.isActive
+                              ? "bg-emerald-500/20 text-emerald-300"
+                              : "bg-slate-800 text-slate-300"
+                          }`}
+                        >
+                          {statusLabel}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-3 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-slate-100">
+                          {agent.title}
+                        </h3>
+                        <span className="text-[9px] uppercase tracking-[0.2em] text-emerald-300">
+                          {agent.category}
+                        </span>
+                      </div>
+                      <p
+                        className="text-xs text-slate-400 truncate"
+                        title={agent.description}
+                      >
+                        {agent.description}
+                      </p>
+                    </div>
                     <button
-                      key={agent.id}
-                      className="flex h-full flex-col justify-between rounded-2xl border border-slate-800/80 bg-slate-900/60 px-4 py-4 text-left text-sm text-slate-200 transition hover:border-emerald-400/60"
+                      className="mt-3 rounded-full border border-emerald-400/40 px-3 py-2 text-[10px] uppercase tracking-[0.24em] text-emerald-200 hover:border-emerald-300"
                       type="button"
                       onClick={() => setSelectedAgent(agent)}
                     >
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xl">{agent.icon}</span>
-                          <span
-                            className={`rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
-                              isActive
-                                ? "bg-emerald-500/20 text-emerald-300"
-                                : "bg-slate-800 text-slate-300"
-                            }`}
-                          >
-                            {statusLabel}
-                          </span>
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-slate-100">
-                            {agent.title}
-                          </h3>
-                          <p className="mt-2 text-xs uppercase tracking-[0.2em] text-slate-400">
-                            {agent.description}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-4 text-xs uppercase tracking-[0.2em] text-emerald-200">
-                        Details ansehen
-                      </div>
+                      Start
                     </button>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-
-          <button
-            className="flex h-full flex-col justify-between rounded-2xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-4 text-left text-sm text-emerald-200 transition hover:border-emerald-300"
-            type="button"
-            onClick={() => setShowArchitectChat(true)}
-          >
-            <div className="space-y-3">
-              <span className="text-xl">✨</span>
-              <div>
-                <h3 className="text-lg font-semibold">
-                  Brauchst du einen anderen Experten?
-                </h3>
-                <p className="mt-2 text-xs uppercase tracking-[0.2em] text-emerald-200/80">
-                  Frag den Architect!
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 text-xs uppercase tracking-[0.2em] text-emerald-200">
-              Architect-Chat öffnen
-            </div>
-          </button>
+          )}
         </div>
       </section>
 

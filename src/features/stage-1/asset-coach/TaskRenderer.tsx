@@ -14,6 +14,7 @@ import { updateTaskProgress } from "@/core/progress";
 import { Card } from "@/shared/components/Card";
 import { Button } from "@/shared/components/Button";
 import { YuhConnector } from "@/shared/tools/YuhConnector";
+import { AgentConsole } from "@/shared/components/AgentConsole";
 import {
   generateAssetCoachPrompt,
   generateSwissWealthAnalysis,
@@ -55,6 +56,7 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
   const [agentStatus, setAgentStatus] = useState<AgentStatusStep[]>([]);
   const [agentOutput, setAgentOutput] = useState<string | null>(null);
   const [agentRunning, setAgentRunning] = useState(false);
+  const [statusIndicator, setStatusIndicator] = useState<string | null>(null);
 
   const { setTotalTasks, setCompletedTasks } = useProgressStore();
   const completedCount = useMemo(() => {
@@ -131,6 +133,7 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
       if (!assetInput.trim()) {
         setAgentOutput(null);
         setAgentStatus([]);
+        setStatusIndicator(null);
         return;
       }
       setAgentRunning(true);
@@ -141,6 +144,18 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
         (_step, steps) => {
           if (!isActive) return;
           setAgentStatus(steps);
+          const latest = steps[steps.length - 1]?.label ?? "";
+          if (latest.includes("IsinAnalyzer")) {
+            setStatusIndicator("Agent is checking ISIN...");
+          } else if (latest.includes("FeeCalculator")) {
+            setStatusIndicator("Agent is calculating fees...");
+          } else if (latest.includes("YuhLinker")) {
+            setStatusIndicator("Agent is preparing Yuh link...");
+          } else if (latest.includes("FINAL")) {
+            setStatusIndicator("Agent is preparing final response...");
+          } else {
+            setStatusIndicator("Agent is analyzing...");
+          }
         },
       );
       if (!isActive) return;
@@ -309,16 +324,10 @@ export const TaskRenderer = ({ moduleId, stageId, tasks }: TaskRendererProps) =>
               </p>
               {agentRunning ? (
                 <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-xs uppercase tracking-[0.2em] text-emerald-200">
-                  Agent is calling tools...
+                  {statusIndicator ?? "Agent is calling tools..."}
                 </div>
               ) : null}
-              {agentStatus.length > 0 ? (
-                <div className="space-y-1 text-xs text-slate-400">
-                  {agentStatus.slice(-3).map((step) => (
-                    <p key={step.timestamp}>{step.label}</p>
-                  ))}
-                </div>
-              ) : null}
+              <AgentConsole entries={agentStatus.map((step) => step.label)} />
               {hardContext ? (
                 <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
                   {hardContext}

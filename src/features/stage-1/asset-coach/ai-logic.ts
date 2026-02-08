@@ -5,7 +5,7 @@
  * @REQUIRED_TOOLS ["IsinAnalyzer", "FeeCalc", "YuhLinker"]
  */
 import type { AssetProfile } from "@/shared/tools/IsinAnalyzer";
-import { lookupAsset } from "@/shared/tools/IsinAnalyzer";
+import { isLikelyIsin, lookupAsset } from "@/shared/tools/IsinAnalyzer";
 import { calcReferenceFee, calcYuhFee } from "@/shared/tools/FeeCalculator";
 import { buildYuhDeepLink } from "@/shared/tools/YuhConnector";
 
@@ -92,27 +92,40 @@ export const runAssetCoachAgent = async (
     onStatus?.(step, [...statusSteps]);
   };
 
-  pushStatus("Thought: Identify missing asset details.");
-  pushStatus("Action: Tool [IsinLookup]");
+  const cleanLabel = formatAssetLabel(assetInput);
+  pushStatus("> [THOUGHT]: Analyzing user input for asset identification...");
+  pushStatus(`> [TOOL_CALL]: Accessing IsinAnalyzer for "${cleanLabel}"...`);
   const asset = await lookupAsset(assetInput);
-  pushStatus(
-    `Observation: ${asset ? `${asset.name} (${asset.symbol})` : "No match"}.`,
-  );
+  if (asset) {
+    const matchToken = isLikelyIsin(assetInput)
+      ? assetInput.trim().toUpperCase()
+      : asset.symbol;
+    pushStatus(
+      `> [OBSERVATION]: Match found: ${matchToken}. Asset type: ${asset.type}.`,
+    );
+  } else {
+    pushStatus(
+      "> [OBSERVATION]: No match found. Asset type: Unknown.",
+    );
+  }
 
-  pushStatus("Thought: Calculate Yuh transaction fee.");
-  pushStatus("Action: Tool [FeeCalc]");
-  await sleep(250);
+  pushStatus(
+    `> [TOOL_CALL]: Accessing FeeCalculator for ${amountChf} CHF...`,
+  );
+  await sleep(150);
   const yuhFee = calcYuhFee(amountChf);
   const referenceFee = calcReferenceFee(amountChf);
   pushStatus(
-    `Observation: Yuh ${formatChf(yuhFee)} vs Reference ${formatChf(referenceFee)}.`,
+    `> [OBSERVATION]: Yuh fee ${formatChf(yuhFee)} vs Reference ${formatChf(
+      referenceFee,
+    )}.`,
   );
 
-  pushStatus("Thought: Prepare execution link.");
-  pushStatus("Action: Tool [YuhLinker]");
-  await sleep(150);
+  pushStatus("> [TOOL_CALL]: Generating YuhLinker deep-link...");
+  await sleep(120);
   const yuhLink = buildYuhDeepLink({ action: "connect" });
-  pushStatus(`Observation: Link ready (${yuhLink}).`);
+  pushStatus(`> [OBSERVATION]: Link ready (${yuhLink}).`);
+  pushStatus("> [FINAL]: Generating wealth engineering recommendation...");
 
   const hardContext = asset
     ? `Hard Context: ${asset.name} (${asset.symbol}) is a ${asset.type} in ${asset.currency}.`

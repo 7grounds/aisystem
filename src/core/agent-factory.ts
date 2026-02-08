@@ -397,6 +397,32 @@ export const dispatchTechnicalTask = async ({
   };
 };
 
+export const logManagementProtocol = async ({
+  userId,
+  organizationId,
+  agentName,
+  summary,
+  details,
+}: {
+  userId: string;
+  organizationId: string | null;
+  agentName: string;
+  summary: string;
+  details?: string;
+}) => {
+  return supabase.from("universal_history").insert({
+    user_id: userId,
+    organization_id: organizationId,
+    payload: {
+      type: "management_log",
+      agent_name: agentName,
+      summary,
+      details: details ?? null,
+    },
+    created_at: new Date().toISOString(),
+  });
+};
+
 type ConversationEntry = {
   role: "system" | "user" | "assistant";
   content: string;

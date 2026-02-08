@@ -166,6 +166,24 @@ const FactoryPage = () => {
           ],
         });
 
+      const { data: masterSeeded, created: masterCreated } =
+        await registerNewAgent({
+          name: "Master-Manager",
+          description:
+            "Executive Orchestrator für das Management-Board.",
+          systemPrompt:
+            "Du bist der Stellvertreter des Owners. Dein Ziel ist es, das Management-Board (Growth, Evolution, Dev, Guardian, Coordinator) zu führen. Du bündelst deren Input und präsentierst dem Owner nur die Essenz. Du sorgst dafür, dass das Board harmonisch und zielgerichtet arbeitet.",
+          category: "Management",
+          icon: "👑",
+          searchKeywords: [
+            "executive",
+            "management",
+            "board",
+            "koordination",
+            "summary",
+          ],
+        });
+
       const { data: guardianSeeded, created: guardianCreated } =
         await registerNewAgent({
           name: "Vault-Guardian",
@@ -240,6 +258,13 @@ const FactoryPage = () => {
 
       if (coordinatorCreated && coordinatorSeeded) {
         const newTemplate = instantiateTemplates([coordinatorSeeded])[0];
+        if (newTemplate) {
+          setTemplates((prev) => [newTemplate, ...prev]);
+        }
+      }
+
+      if (masterCreated && masterSeeded) {
+        const newTemplate = instantiateTemplates([masterSeeded])[0];
         if (newTemplate) {
           setTemplates((prev) => [newTemplate, ...prev]);
         }

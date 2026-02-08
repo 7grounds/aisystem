@@ -9,6 +9,33 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      agent_definitions: {
+        Row: {
+          id: string;
+          name: string;
+          system_prompt: string;
+          icon: string | null;
+          status: string | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          system_prompt: string;
+          icon?: string | null;
+          status?: string | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          system_prompt?: string;
+          icon?: string | null;
+          status?: string | null;
+          created_at?: string | null;
+        };
+        Relationships: [];
+      };
       organizations: {
         Row: {
           id: string;

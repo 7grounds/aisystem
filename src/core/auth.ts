@@ -1,4 +1,4 @@
-import { supabase } from "./supabaseClient";
+import { supabase } from "./supabase";
 
 export const requestMagicLink = async (email: string) => {
   return supabase.auth.signInWithOtp({

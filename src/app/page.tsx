@@ -11,20 +11,17 @@ export default function Home() {
         <p className="text-xs uppercase tracking-[0.3em] text-emerald-400">
           Zasterix
         </p>
-        <h1 className="text-3xl font-semibold">Executive Boardroom</h1>
+        <h1 className="text-3xl font-semibold">Zasterix Vault</h1>
         <p className="text-sm text-slate-400">
-          Navigate directly to the management cockpit.
-        </p>
-        <p className="text-xs uppercase tracking-[0.24em] text-slate-500">
-          Boardroom access for owners only.
+          Private access to the executive cockpit.
         </p>
       </div>
 
       <a
         className="mx-auto inline-flex items-center justify-center rounded-full bg-amber-300 px-6 py-3 text-xs font-semibold uppercase tracking-[0.24em] text-slate-900 shadow-[0_12px_30px_rgba(251,191,36,0.35)] transition hover:bg-amber-200"
-        href="/admin/cockpit"
+        href="/zasterix-vault"
       >
-        Zum Boardroom
+        Vault öffnen
       </a>
     </div>
   );

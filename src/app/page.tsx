@@ -1,62 +1,148 @@
 /**
  * @MODULE_ID app.home
  * @STAGE stage-1
- * @DATA_INPUTS ["activeModule", "progressSnapshot"]
- * @REQUIRED_TOOLS ["YuhConnector", "getButtonClasses"]
+ * @DATA_INPUTS ["useUserProgress", "assetCoachTasks", "assetIdentificationTasks"]
+ * @REQUIRED_TOOLS ["YuhConnector", "getButtonClasses", "useUserProgress"]
  */
+"use client";
+
 import Link from "next/link";
 import { getButtonClasses } from "@/shared/components/Button";
 import { YuhConnector } from "@/shared/tools/YuhConnector";
+import { useUserProgress } from "@/core/hooks";
+import { assetCoachTasks } from "@/features/stage-1/asset-coach/tasks.config";
+import { assetIdentificationTasks } from "@/features/stage-1/asset-identification/tasks.config";
 
 export default function Home() {
+  const defaultStage = "stage-1";
+  const defaultModule = "asset-coach";
+  const nextModule = "asset-identification";
+
+  const { currentStage, currentModule, completedTasks, lastSync, isLoading } =
+    useUserProgress();
+
+  const stageId = currentStage ?? defaultStage;
+  const moduleId = currentModule ?? defaultModule;
+  const moduleKey = `${stageId}/${moduleId}`;
+  const defaultKey = `${defaultStage}/${defaultModule}`;
+
+  const taskRegistry: Record<string, { id: string }[]> = {
+    "stage-1/asset-coach": assetCoachTasks,
+    "stage-1/asset-identification": assetIdentificationTasks,
+  };
+
+  const moduleMeta: Record<
+    string,
+    { title: string; description: string; accent: string }
+  > = {
+    "stage-1/asset-coach": {
+      title: "Stage 1: Asset-Coach",
+      description:
+        "AI-powered asset diagnostics built for Swiss wealth engineering. Stress-test assets before they enter the Yuh portfolio workflow.",
+      accent: "Active Module",
+    },
+    "stage-1/asset-identification": {
+      title: "Stage 1: Asset Identification",
+      description:
+        "Map the full asset inventory to provide the AI coach with a precise wealth baseline.",
+      accent: "Next Module",
+    },
+  };
+
+  const activeTasks = taskRegistry[moduleKey] ?? taskRegistry[defaultKey];
+  const totalTasks = activeTasks?.length ?? 0;
+  const completedCount = Math.min(completedTasks.length, totalTasks);
+  const progressPercent = totalTasks
+    ? Math.round((completedCount / totalTasks) * 100)
+    : 0;
+
+  const isNewUser = !currentStage || !currentModule;
+  const isModuleCompleted = !isNewUser && completedCount >= totalTasks;
+
+  const activeMeta = moduleMeta[moduleKey] ?? moduleMeta[defaultKey];
+  const primaryLabel = isNewUser
+    ? "Start Journey"
+    : isModuleCompleted
+      ? "Next Module"
+      : "Continue Engineering";
+
+  const buildModuleRoute = (stage: string, module: string) => {
+    const normalizedStage = stage.startsWith("stage-")
+      ? stage
+      : `stage-${stage}`;
+    return `/${normalizedStage}/${module}`;
+  };
+
+  const primaryHref = isModuleCompleted
+    ? buildModuleRoute(defaultStage, nextModule)
+    : buildModuleRoute(stageId, moduleId);
+
+  const lastSyncLabel = lastSync
+    ? new Date(lastSync).toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "--:--";
+
   return (
     <div className="space-y-10">
       <section className="rounded-3xl bg-slate-950 px-8 py-10 text-slate-100 shadow-[0_25px_60px_rgba(15,23,42,0.4)]">
         <div className="space-y-4">
           <p className="text-xs uppercase tracking-[0.3em] text-emerald-400">
-            Active Module
+            {activeMeta.accent}
           </p>
           <div className="space-y-3">
-            <h2 className="text-3xl font-semibold">
-              Stage 1: Asset-Coach
-            </h2>
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-3xl font-semibold">{activeMeta.title}</h2>
+              {isModuleCompleted ? (
+                <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+                  ✓ Completed
+                </span>
+              ) : null}
+            </div>
             <p className="max-w-2xl text-sm leading-relaxed text-slate-300">
-              AI-powered asset diagnostics built for Swiss wealth engineering.
-              Run a precision check before an asset is admitted into the Yuh
-              portfolio workflow.
+              {activeMeta.description}
             </p>
+            {isModuleCompleted ? (
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                Next Module: Stage 1 / Asset Identification
+              </p>
+            ) : null}
           </div>
           <div className="pt-2">
             <Link
               className={getButtonClasses("action", "md")}
-              href="/stage-1/asset-coach"
+              href={primaryHref}
             >
-              Start Engineering
+              {primaryLabel}
             </Link>
           </div>
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-800/80 bg-slate-900 px-8 py-8 text-slate-100 shadow-[0_20px_50px_rgba(15,23,42,0.35)]">
-        <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-slate-400">
+      <section className="rounded-3xl border border-white/10 bg-white/10 px-8 py-8 text-slate-100 shadow-[0_20px_50px_rgba(15,23,42,0.35)] backdrop-blur-xl">
+        <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-slate-300">
           <span>Progress Overview</span>
-          <span>Stage 1</span>
+          <span>{stageId}</span>
         </div>
         <div className="mt-4 space-y-3">
-          <div className="flex items-center justify-between text-sm text-slate-200">
+          <div className="flex items-center justify-between text-sm text-slate-100">
             <span className="font-medium text-emerald-400">
-              0% Completed
+              {isLoading ? "Syncing..." : `${progressPercent}% Completed`}
             </span>
-            <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
-              0 / 3 Tasks
+            <span className="text-xs uppercase tracking-[0.2em] text-slate-300">
+              {completedCount} / {totalTasks} Tasks
             </span>
           </div>
-          <div className="h-2 w-full rounded-full bg-slate-800">
+          <div className="h-2 w-full rounded-full bg-slate-800/80">
             <div
               className="h-2 rounded-full bg-emerald-500 transition-all"
-              style={{ width: "0%" }}
+              style={{ width: `${progressPercent}%` }}
             />
           </div>
+        </div>
+        <div className="mt-6 text-xs uppercase tracking-[0.24em] text-slate-400">
+          Last Sync: {lastSyncLabel}
         </div>
       </section>
 

@@ -36,7 +36,7 @@ export default async function VaultPage() {
 
     const { data, error } = await supabase
       .from("universal_history")
-      .select("id, payload, summary_payload, created_at")
+      .select("id, user_id, organization_id, payload, summary_payload, created_at")
       .order("created_at", { ascending: false })
       .limit(50);
 

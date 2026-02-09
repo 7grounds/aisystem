@@ -44,15 +44,19 @@ const renderPayload = (payload: any) => {
 
 export default function VaultPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [errorRaw, setErrorRaw] = useState<any | null>(null);
+  const urlConfigured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const keyConfigured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   useEffect(() => {
     let isMounted = true;
-    const hasUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
-    const hasKey = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
-    if (!hasUrl || !hasKey) {
-      setError("Supabase env missing (NEXT_PUBLIC_...).");
+    if (!urlConfigured || !keyConfigured) {
+      setErrorRaw({
+        message: "Supabase env missing (NEXT_PUBLIC_...).",
+        hasUrl: urlConfigured,
+        hasKey: keyConfigured,
+      });
       return () => {
         isMounted = false;
       };
@@ -68,12 +72,12 @@ export default function VaultPage() {
       if (!isMounted) return;
 
       if (fetchError) {
-        setError(fetchError.message || "Failed to load history.");
+        setErrorRaw(fetchError);
         setHistory([]);
         return;
       }
 
-      setError(null);
+      setErrorRaw(null);
       setHistory((data as HistoryEntry[]) ?? []);
     };
 
@@ -95,15 +99,24 @@ export default function VaultPage() {
         </h1>
       </header>
 
-      {error ? (
-        <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-4 text-lg font-semibold text-rose-200">
-          {error}
+      <div className="rounded-2xl border border-slate-800/70 bg-slate-950/80 px-4 py-3 text-xs uppercase tracking-[0.2em] text-slate-300">
+        <p>URL_CONFIGURED: {urlConfigured ? "true" : "false"}</p>
+        <p>KEY_CONFIGURED: {keyConfigured ? "true" : "false"}</p>
+      </div>
+
+      {errorRaw ? (
+        <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-4 text-sm text-rose-200">
+          <pre className="whitespace-pre-wrap">
+            {JSON.stringify(errorRaw, null, 2)}
+          </pre>
         </div>
       ) : null}
 
       <div className="space-y-3">
         {history.length === 0 ? (
-          <p className="text-sm text-slate-400">Keine Einträge vorhanden.</p>
+          <p className="text-sm text-slate-400">
+            Keine Einträge vorhanden. (count: {history.length})
+          </p>
         ) : (
           history.map((entry, index) => (
             <div

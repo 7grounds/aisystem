@@ -2,29 +2,18 @@
  * @MODULE_ID app.zasterix-vault.dashboard
  * @STAGE admin
  * @DATA_INPUTS ["universal_history"]
- * @REQUIRED_TOOLS ["supabase"]
+ * @REQUIRED_TOOLS []
  */
-"use client";
-
-import { useEffect } from "react";
 import type { Database } from "@/core/types/database.types";
 import { DynamicPayloadRenderer } from "@/shared/components/DynamicPayloadRenderer";
 
 type UniversalHistoryRow =
   Database["public"]["Tables"]["universal_history"]["Row"];
 
-const clientHasUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
-const clientHasKey = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-
 type VaultDashboardProps = {
-  debugMode?: boolean;
   initialHistory?: UniversalHistoryRow[];
   serverErrorMessage?: string | null;
   serverErrorDetails?: string | null;
-  serverEnvStatus?: {
-    hasUrl: boolean;
-    hasKey: boolean;
-  };
 };
 
 const formatTimestamp = (value: string | null) => {
@@ -40,22 +29,12 @@ const formatTimestamp = (value: string | null) => {
 };
 
 export const VaultDashboard = ({
-  debugMode = false,
   initialHistory = [],
   serverErrorMessage = null,
   serverErrorDetails = null,
-  serverEnvStatus,
 }: VaultDashboardProps) => {
   const history = initialHistory ?? [];
   const hasError = Boolean(serverErrorMessage || serverErrorDetails);
-
-  useEffect(() => {
-    if (!debugMode) return;
-    console.info("Vault client env status:", {
-      hasSupabaseUrl: clientHasUrl,
-      hasSupabaseAnonKey: clientHasKey,
-    });
-  }, [debugMode]);
 
   return (
     <div className="space-y-6">
@@ -70,24 +49,6 @@ export const VaultDashboard = ({
           Live protocol stream from universal_history.
         </p>
       </header>
-
-      {debugMode ? (
-        <section className="rounded-2xl border border-slate-800/70 bg-slate-950/80 px-4 py-4 text-sm text-slate-200">
-          <div className="text-xs uppercase tracking-[0.24em] text-emerald-300">
-            System Status
-          </div>
-          <div className="mt-3 space-y-1 text-xs text-slate-300">
-            <p>hasUrl: {serverEnvStatus?.hasUrl ? "true" : "false"}</p>
-            <p>hasKey: {serverEnvStatus?.hasKey ? "true" : "false"}</p>
-            {hasError ? (
-              <div className="mt-2 space-y-1 text-rose-200">
-                <p>Error: {serverErrorMessage ?? "unknown"}</p>
-                {serverErrorDetails ? <p>{serverErrorDetails}</p> : null}
-              </div>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
 
       {hasError ? (
         <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">

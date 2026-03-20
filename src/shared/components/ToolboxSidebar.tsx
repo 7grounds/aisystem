@@ -4,6 +4,7 @@
  * @DATA_INPUTS ["tools"]
  * @REQUIRED_TOOLS ["YuhConnector", "BoardroomLink"]
  */
+import Link from "next/link";
 import { YuhConnector } from "@/shared/tools/YuhConnector";
 import { BoardroomLink } from "@/shared/components/BoardroomLink";
 
@@ -56,6 +57,14 @@ export const ToolboxSidebar = () => {
             <div className="mt-4">{tool.action}</div>
           </div>
         ))}
+      </div>
+      <div className="pt-2">
+        <Link
+          className="flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-700 shadow-sm transition hover:bg-slate-50"
+          href="/history"
+        >
+          Chat History
+        </Link>
       </div>
       <div className="pt-2">
         <BoardroomLink />
